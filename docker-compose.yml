@@ -1,0 +1,19 @@
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: thtax
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-dev_only_change_me}
+      POSTGRES_DB: thtax
+    volumes: [dbdata:/var/lib/postgresql/data]
+  api:
+    build: ./backend
+    environment:
+      DATABASE_URL: postgresql+psycopg://thtax:${POSTGRES_PASSWORD:-dev_only_change_me}@db/thtax
+      ORIGINALS_DIR: /data/originals
+    volumes: [originals:/data/originals]
+    ports: ["8000:8000"]
+    depends_on: [db]
+volumes:
+  dbdata:
+  originals:
