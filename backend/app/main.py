@@ -24,8 +24,19 @@ app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:5173"], allo
 app.add_exception_handler(ApiError, api_error_handler)
 store = LocalWriteOnceStore()
 
-ERR = {"model": ErrorBody}
-UPLOAD_ERRORS = {s: ERR for s in (400, 401, 404, 409, 413, 415, 422)}
+# Mô tả viết tường minh để đặc tả không đổi theo phiên bản Python
+_ERROR_DESCRIPTIONS = {
+    400: "Yêu cầu không hợp lệ", 401: "Chưa xác thực", 404: "Không tìm thấy hoặc không có quyền",
+    409: "Idempotency-Key đã dùng cho file khác", 413: "File quá lớn", 415: "Định dạng không được hỗ trợ",
+    422: "File không xử lý được",
+}
+
+
+def _errors(*codes: int) -> dict:
+    return {c: {"model": ErrorBody, "description": _ERROR_DESCRIPTIONS[c]} for c in codes}
+
+
+UPLOAD_ERRORS = _errors(400, 401, 404, 409, 413, 415, 422)
 
 
 def _iso(value: datetime) -> str:
@@ -138,7 +149,7 @@ def health() -> dict:
     return {"status": "ok"}
 
 
-@app.post("/clients", status_code=201, response_model=ClientOut, responses={401: ERR})
+@app.post("/clients", status_code=201, response_model=ClientOut, responses=_errors(401))
 def create_client(body: ClientIn, db: Session = Depends(get_db), user: User = Depends(current_user)):
     client = Client(name=body.name, tax_id=body.tax_id)
     db.add(client)
@@ -146,7 +157,7 @@ def create_client(body: ClientIn, db: Session = Depends(get_db), user: User = De
     return ClientOut(id=client.id, name=client.name, tax_id=client.tax_id)
 
 
-@app.post("/batches", status_code=201, response_model=BatchOut, responses={401: ERR, 404: ERR})
+@app.post("/batches", status_code=201, response_model=BatchOut, responses=_errors(401, 404))
 def create_batch(body: BatchIn, db: Session = Depends(get_db), user: User = Depends(current_user)):
     require_scope(user, body.client_id)
     if db.get(Client, body.client_id) is None:
@@ -192,7 +203,7 @@ def upload_document(
                 raise
 
 
-@app.get("/documents/{document_id}", response_model=DocumentOut, responses={401: ERR, 404: ERR})
+@app.get("/documents/{document_id}", response_model=DocumentOut, responses=_errors(401, 404))
 def get_document(document_id: str, db: Session = Depends(get_db), user: User = Depends(current_user)):
     doc = db.get(Document, document_id)
     if doc is None:
@@ -203,7 +214,7 @@ def get_document(document_id: str, db: Session = Depends(get_db), user: User = D
                        uploaded_by=doc.uploaded_by, received_at=_iso(doc.received_at))
 
 
-@app.get("/batches/{batch_id}/manifest", response_model=Manifest, responses={401: ERR, 404: ERR})
+@app.get("/batches/{batch_id}/manifest", response_model=Manifest, responses=_errors(401, 404))
 def manifest(batch_id: str, db: Session = Depends(get_db), user: User = Depends(current_user)):
     batch = _batch_or_404(db, user, batch_id)
     rows = db.execute(select(Submission, Document.status).outerjoin(Document, Submission.document_id == Document.id)

@@ -50,11 +50,11 @@ paths:
               schema:
                 $ref: '#/components/schemas/ClientOut'
         '401':
+          description: Chưa xác thực
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorBody'
-          description: Unauthorized
         '422':
           description: Validation Error
           content:
@@ -95,17 +95,17 @@ paths:
               schema:
                 $ref: '#/components/schemas/BatchOut'
         '401':
+          description: Chưa xác thực
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorBody'
-          description: Unauthorized
         '404':
+          description: Không tìm thấy hoặc không có quyền
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorBody'
-          description: Not Found
         '422':
           description: Validation Error
           content:
@@ -167,47 +167,47 @@ paths:
               schema:
                 $ref: '#/components/schemas/DocumentReceipt'
         '400':
+          description: Yêu cầu không hợp lệ
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorBody'
-          description: Bad Request
         '401':
+          description: Chưa xác thực
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorBody'
-          description: Unauthorized
         '404':
+          description: Không tìm thấy hoặc không có quyền
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorBody'
-          description: Not Found
         '409':
+          description: Idempotency-Key đã dùng cho file khác
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorBody'
-          description: Conflict
         '413':
+          description: File quá lớn
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorBody'
-          description: Content Too Large
         '415':
+          description: Định dạng không được hỗ trợ
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorBody'
-          description: Unsupported Media Type
         '422':
+          description: File không xử lý được
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorBody'
-          description: Unprocessable Content
   /documents/{document_id}:
     get:
       summary: Get Document
@@ -242,17 +242,17 @@ paths:
               schema:
                 $ref: '#/components/schemas/DocumentOut'
         '401':
+          description: Chưa xác thực
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorBody'
-          description: Unauthorized
         '404':
+          description: Không tìm thấy hoặc không có quyền
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorBody'
-          description: Not Found
         '422':
           description: Validation Error
           content:
@@ -293,17 +293,17 @@ paths:
               schema:
                 $ref: '#/components/schemas/Manifest'
         '401':
+          description: Chưa xác thực
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorBody'
-          description: Unauthorized
         '404':
+          description: Không tìm thấy hoặc không có quyền
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorBody'
-          description: Not Found
         '422':
           description: Validation Error
           content:
