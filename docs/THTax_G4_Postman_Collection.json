@@ -1,0 +1,825 @@
+{
+  "info": {
+    "name": "THTax G4 - Sprint 1 API Tests",
+    "description": "Bộ kiểm thử API Sprint 1 - Hệ thống tiếp nhận tài liệu thuế thông minh\nTester: Nguyễn Thanh Khiêm (CV13)\n\nCách dùng:\n1. Chạy TC-CL-01 trước → tự lưu client_id\n2. Chạy TC-BA-01 → tự lưu batch_id\n3. Chạy TC-UP-01 → tự lưu document_id và idempotency_key_01\n4. Các TC upload cần chọn file từ docs/test/files/ trong repo",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_url", "value": "http://127.0.0.1:8000" },
+    { "key": "x_user", "value": "kim" },
+    { "key": "client_id", "value": "" },
+    { "key": "batch_id", "value": "" },
+    { "key": "document_id", "value": "" },
+    { "key": "idempotency_key_01", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "1. CLIENT",
+      "item": [
+        {
+          "name": "TC-CL-01 Tạo client hợp lệ",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('TC-CL-01: Status 201 Created', function() {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test('TC-CL-01: Có trả về id', function() {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json).to.have.property('id');",
+                  "    pm.collectionVariables.set('client_id', json.id);",
+                  "    console.log('client_id đã lưu:', json.id);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "x-user", "value": "{{x_user}}" },
+              { "key": "x-client-ids", "value": "0" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Cty_Test_Khiem\",\n  \"tax_id\": \"0312345678\"\n}"
+            },
+            "url": { "raw": "{{base_url}}/clients", "host": ["{{base_url}}"], "path": ["clients"] }
+          }
+        },
+        {
+          "name": "TC-CL-02 Thiếu trường name",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('TC-CL-02: Status 422 khi thiếu name', function() {",
+                  "    pm.response.to.have.status(422);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "x-user", "value": "{{x_user}}" },
+              { "key": "x-client-ids", "value": "0" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"tax_id\": \"0312345678\"\n}" },
+            "url": { "raw": "{{base_url}}/clients", "host": ["{{base_url}}"], "path": ["clients"] }
+          }
+        },
+        {
+          "name": "TC-CL-03 Thiếu trường tax_id",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('TC-CL-03: Status 422 khi thiếu tax_id', function() {",
+                  "    pm.response.to.have.status(422);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "x-user", "value": "{{x_user}}" },
+              { "key": "x-client-ids", "value": "0" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Cty_Test_Khiem\"\n}" },
+            "url": { "raw": "{{base_url}}/clients", "host": ["{{base_url}}"], "path": ["clients"] }
+          }
+        },
+        {
+          "name": "TC-CL-04 Thiếu header x-user",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('TC-CL-04: Status 401 hoặc 403 khi thiếu x-user', function() {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([401, 403, 422]);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "x-client-ids", "value": "0" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Cty_Test\",\n  \"tax_id\": \"0312345678\"\n}" },
+            "url": { "raw": "{{base_url}}/clients", "host": ["{{base_url}}"], "path": ["clients"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. BATCH",
+      "item": [
+        {
+          "name": "TC-BA-01 Tạo batch hợp lệ",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('TC-BA-01: Status 201 Created', function() {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test('TC-BA-01: Có trả về id batch', function() {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json).to.have.property('id');",
+                  "    pm.collectionVariables.set('batch_id', json.id);",
+                  "    console.log('batch_id đã lưu:', json.id);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "x-user", "value": "{{x_user}}" },
+              { "key": "x-client-ids", "value": "{{client_id}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"client_id\": \"{{client_id}}\",\n  \"engagement_id\": \"T11-2026\"\n}"
+            },
+            "url": { "raw": "{{base_url}}/batches", "host": ["{{base_url}}"], "path": ["batches"] }
+          }
+        },
+        {
+          "name": "TC-BA-02 client_id không tồn tại",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('TC-BA-02: Status 404 khi client_id sai', function() {",
+                  "    pm.response.to.have.status(404);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "x-user", "value": "{{x_user}}" },
+              { "key": "x-client-ids", "value": "00000000-0000-0000-0000-000000000000" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"client_id\": \"00000000-0000-0000-0000-000000000000\",\n  \"engagement_id\": \"T11-2026\"\n}"
+            },
+            "url": { "raw": "{{base_url}}/batches", "host": ["{{base_url}}"], "path": ["batches"] }
+          }
+        },
+        {
+          "name": "TC-BA-03 x-client-ids không khớp client_id",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('TC-BA-03: Status 404 khi x-client-ids sai', function() {",
+                  "    pm.response.to.have.status(404);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "x-user", "value": "{{x_user}}" },
+              { "key": "x-client-ids", "value": "0" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"client_id\": \"{{client_id}}\",\n  \"engagement_id\": \"T11-2026\"\n}"
+            },
+            "url": { "raw": "{{base_url}}/batches", "host": ["{{base_url}}"], "path": ["batches"] }
+          }
+        },
+        {
+          "name": "TC-BA-04 Thiếu engagement_id",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('TC-BA-04: Status 422 khi thiếu engagement_id', function() {",
+                  "    pm.response.to.have.status(422);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "x-user", "value": "{{x_user}}" },
+              { "key": "x-client-ids", "value": "{{client_id}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"client_id\": \"{{client_id}}\"\n}" },
+            "url": { "raw": "{{base_url}}/batches", "host": ["{{base_url}}"], "path": ["batches"] }
+          }
+        },
+        {
+          "name": "TC-BA-05 Body rỗng",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('TC-BA-05: Status 422 khi body rỗng', function() {",
+                  "    pm.response.to.have.status(422);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "x-user", "value": "{{x_user}}" },
+              { "key": "x-client-ids", "value": "{{client_id}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": { "mode": "raw", "raw": "{}" },
+            "url": { "raw": "{{base_url}}/batches", "host": ["{{base_url}}"], "path": ["batches"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. UPLOAD",
+      "item": [
+        {
+          "name": "TC-UP-01 Upload PDF hợp lệ",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "// Tạo UUID mới cho TC-UP-01 và lưu để TC-UP-03 dùng lại",
+                  "function uuid() {",
+                  "    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {",
+                  "        var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);",
+                  "        return v.toString(16);",
+                  "    });",
+                  "}",
+                  "var key = uuid();",
+                  "pm.collectionVariables.set('idempotency_key_01', key);",
+                  "pm.request.headers.upsert({ key: 'Idempotency-Key', value: key });",
+                  "console.log('Idempotency-Key TC-UP-01:', key);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('TC-UP-01: Status 201 Created', function() {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test('TC-UP-01: Có document_id, sha256, status=received', function() {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json).to.have.property('document_id');",
+                  "    pm.expect(json).to.have.property('sha256');",
+                  "    pm.expect(json.status).to.eql('received');",
+                  "    pm.expect(json.duplicate).to.eql(false);",
+                  "    pm.collectionVariables.set('document_id', json.document_id);",
+                  "    console.log('document_id đã lưu:', json.document_id);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "x-user", "value": "{{x_user}}" },
+              { "key": "x-client-ids", "value": "{{client_id}}" }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "",
+                  "description": "Chọn file: docs/test/files/valid_invoice_2p.pdf trong repo"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/batches/{{batch_id}}/documents",
+              "host": ["{{base_url}}"],
+              "path": ["batches", "{{batch_id}}", "documents"]
+            }
+          }
+        },
+        {
+          "name": "TC-UP-02 Thiếu Idempotency-Key",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('TC-UP-02: Status 400 khi thiếu Idempotency-Key', function() {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "// FIX: kiểm tra error_code thay vì detail",
+                  "pm.test('TC-UP-02: error_code là missing_idempotency_key', function() {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.error_code).to.eql('missing_idempotency_key');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "x-user", "value": "{{x_user}}" },
+              { "key": "x-client-ids", "value": "{{client_id}}" }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "file", "type": "file", "src": "", "description": "Chọn bất kỳ file PDF nào" }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/batches/{{batch_id}}/documents",
+              "host": ["{{base_url}}"],
+              "path": ["batches", "{{batch_id}}", "documents"]
+            }
+          }
+        },
+        {
+          "name": "TC-UP-03 Upload trùng Idempotency-Key",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "// Dùng lại key đã lưu từ TC-UP-01",
+                  "var key = pm.collectionVariables.get('idempotency_key_01');",
+                  "pm.request.headers.upsert({ key: 'Idempotency-Key', value: key });",
+                  "console.log('Dùng lại Idempotency-Key từ TC-UP-01:', key);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('TC-UP-03: Status 200 hoặc 201', function() {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+                  "});",
+                  "// FIX: dùng đúng tên trường từ response thật (duplicate = true)",
+                  "pm.test('TC-UP-03: Trả duplicate = true', function() {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.duplicate).to.eql(true);",
+                  "    console.log('document_id trả về (phải giống TC-UP-01):', json.document_id);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "x-user", "value": "{{x_user}}" },
+              { "key": "x-client-ids", "value": "{{client_id}}" }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "file", "type": "file", "src": "", "description": "Cùng file như TC-UP-01: docs/test/files/valid_invoice_2p.pdf" }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/batches/{{batch_id}}/documents",
+              "host": ["{{base_url}}"],
+              "path": ["batches", "{{batch_id}}", "documents"]
+            }
+          }
+        },
+        {
+          "name": "TC-UP-04 File exe đổi đuôi thành pdf",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "function uuid() {",
+                  "    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {",
+                  "        var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);",
+                  "        return v.toString(16);",
+                  "    });",
+                  "}",
+                  "pm.request.headers.upsert({ key: 'Idempotency-Key', value: uuid() });"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('TC-UP-04: Bị từ chối khi file giả đuôi (400/415/422)', function() {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([400, 415, 422]);",
+                  "});",
+                  "pm.test('TC-UP-04: Có error_code trong response', function() {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json).to.have.property('error_code');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "x-user", "value": "{{x_user}}" },
+              { "key": "x-client-ids", "value": "{{client_id}}" }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "file", "type": "file", "src": "", "description": "Chọn file: docs/test/files/fake_pdf.pdf trong repo" }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/batches/{{batch_id}}/documents",
+              "host": ["{{base_url}}"],
+              "path": ["batches", "{{batch_id}}", "documents"]
+            }
+          }
+        },
+        {
+          "name": "TC-UP-05 File rỗng 0 byte",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "function uuid() {",
+                  "    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {",
+                  "        var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);",
+                  "        return v.toString(16);",
+                  "    });",
+                  "}",
+                  "pm.request.headers.upsert({ key: 'Idempotency-Key', value: uuid() });"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('TC-UP-05: Từ chối file rỗng (400/422)', function() {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([400, 422]);",
+                  "});",
+                  "pm.test('TC-UP-05: error_code là empty_file', function() {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.error_code).to.eql('empty_file');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "x-user", "value": "{{x_user}}" },
+              { "key": "x-client-ids", "value": "{{client_id}}" }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "file", "type": "file", "src": "", "description": "Chọn file: docs/test/files/empty_file.pdf trong repo" }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/batches/{{batch_id}}/documents",
+              "host": ["{{base_url}}"],
+              "path": ["batches", "{{batch_id}}", "documents"]
+            }
+          }
+        },
+        {
+          "name": "TC-UP-06 File PDF 31 trang (vượt giới hạn)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "function uuid() {",
+                  "    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {",
+                  "        var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);",
+                  "        return v.toString(16);",
+                  "    });",
+                  "}",
+                  "pm.request.headers.upsert({ key: 'Idempotency-Key', value: uuid() });"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('TC-UP-06: PDF 31 trang bị từ chối (422 too_many_pages)', function() {",
+                  "    pm.response.to.have.status(422);",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.error_code).to.eql('too_many_pages');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "x-user", "value": "{{x_user}}" },
+              { "key": "x-client-ids", "value": "{{client_id}}" }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "file", "type": "file", "src": "", "description": "Chọn file: docs/test/files/over_30p_invoice.pdf trong repo (31 trang)" }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/batches/{{batch_id}}/documents",
+              "host": ["{{base_url}}"],
+              "path": ["batches", "{{batch_id}}", "documents"]
+            }
+          }
+        },
+        {
+          "name": "TC-UP-07 File PDF vượt quá 20 MiB",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "function uuid() {",
+                  "    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {",
+                  "        var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);",
+                  "        return v.toString(16);",
+                  "    });",
+                  "}",
+                  "pm.request.headers.upsert({ key: 'Idempotency-Key', value: uuid() });"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('TC-UP-07: Từ chối file > 20 MiB (413 file_too_large)', function() {",
+                  "    pm.response.to.have.status(413);",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.error_code).to.eql('file_too_large');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "x-user", "value": "{{x_user}}" },
+              { "key": "x-client-ids", "value": "{{client_id}}" }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "file", "type": "file", "src": "", "description": "Tạo file over_20mb.pdf (~20.5 MiB) rồi chọn tại đây" }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/batches/{{batch_id}}/documents",
+              "host": ["{{base_url}}"],
+              "path": ["batches", "{{batch_id}}", "documents"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. GET DOCUMENT & MANIFEST",
+      "item": [
+        {
+          "name": "TC-GD-01 Lấy thông tin document",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('TC-GD-01: Status 200', function() {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('TC-GD-01: Có đủ các trường bắt buộc', function() {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json).to.have.property('document_id');",
+                  "    pm.expect(json).to.have.property('sha256');",
+                  "    pm.expect(json).to.have.property('status');",
+                  "    pm.expect(json).to.have.property('file_name');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "x-user", "value": "{{x_user}}" },
+              { "key": "x-client-ids", "value": "{{client_id}}" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/documents/{{document_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["documents", "{{document_id}}"]
+            }
+          }
+        },
+        {
+          "name": "TC-GD-02 Lấy manifest của batch",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('TC-GD-02: Status 200', function() {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('TC-GD-02: Có submissions và by_outcome', function() {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json).to.have.property('submissions');",
+                  "    pm.expect(json).to.have.property('by_outcome');",
+                  "    pm.expect(json.submissions).to.be.above(0);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "x-user", "value": "{{x_user}}" },
+              { "key": "x-client-ids", "value": "{{client_id}}" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/batches/{{batch_id}}/manifest",
+              "host": ["{{base_url}}"],
+              "path": ["batches", "{{batch_id}}", "manifest"]
+            }
+          }
+        },
+        {
+          "name": "TC-GD-03 document_id không tồn tại",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('TC-GD-03: Status 404 khi document_id sai', function() {",
+                  "    pm.response.to.have.status(404);",
+                  "});",
+                  "pm.test('TC-GD-03: error_code là not_found', function() {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.error_code).to.eql('not_found');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "x-user", "value": "{{x_user}}" },
+              { "key": "x-client-ids", "value": "{{client_id}}" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/documents/00000000-0000-0000-0000-000000000000",
+              "host": ["{{base_url}}"],
+              "path": ["documents", "00000000-0000-0000-0000-000000000000"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. BẢO MẬT",
+      "item": [
+        {
+          "name": "TC-BM-01 Upload XML chứa XXE",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "function uuid() {",
+                  "    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {",
+                  "        var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);",
+                  "        return v.toString(16);",
+                  "    });",
+                  "}",
+                  "pm.request.headers.upsert({ key: 'Idempotency-Key', value: uuid() });"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('TC-BM-01: Bị chặn/cách ly XML chứa XXE (422 unsafe_xml)', function() {",
+                  "    pm.response.to.have.status(422);",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.error_code).to.eql('unsafe_xml');",
+                  "});",
+                  "pm.test('TC-BM-01: Response không chứa nội dung hệ thống bị rò rỉ', function() {",
+                  "    var body = pm.response.text();",
+                  "    pm.expect(body).to.not.include('root:');",
+                  "    pm.expect(body).to.not.include('/bin/bash');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "x-user", "value": "{{x_user}}" },
+              { "key": "x-client-ids", "value": "{{client_id}}" }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "file", "type": "file", "src": "", "description": "Chọn file: docs/test/files/unsafe_xxe.xml trong repo" }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/batches/{{batch_id}}/documents",
+              "host": ["{{base_url}}"],
+              "path": ["batches", "{{batch_id}}", "documents"]
+            }
+          }
+        },
+        {
+          "name": "TC-BM-02 Gọi API không có x-user",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('TC-BM-02: Từ chối khi không có x-user (401/403)', function() {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([401, 403, 422]);",
+                  "});",
+                  "pm.test('TC-BM-02: error_code là unauthenticated hoặc unauthorized', function() {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.error_code).to.be.oneOf(['unauthenticated', 'unauthorized', 'forbidden']);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "x-client-ids", "value": "{{client_id}}" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/batches/{{batch_id}}/manifest",
+              "host": ["{{base_url}}"],
+              "path": ["batches", "{{batch_id}}", "manifest"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
