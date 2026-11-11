@@ -1,13 +1,211 @@
-:root { font-family: Arial, sans-serif; color: #1c2733; background: #fff; }
-main { max-width: 960px; margin: 0 auto; padding: 24px 16px; }
-h1 { font-size: 24px; margin: 0 0 4px; } h2 { font-size: 18px; margin-top: 28px; }
-.note { color: #5a6775; margin-top: 0; } .error { color: #b3261e; }
-form { display: grid; gap: 12px; max-width: 420px; }
-label { display: grid; gap: 4px; font-weight: 600; }
-input { padding: 8px; border: 1px solid #8795a3; border-radius: 6px; font: inherit; }
-button { padding: 8px 12px; border: 0; border-radius: 6px; background: #1f3864; color: #fff; font: inherit; cursor: pointer; }
-button:focus-visible, input:focus-visible { outline: 3px solid #e0a100; outline-offset: 1px; }
+
+:root {
+  font-family: Arial, sans-serif;
+  color: #1c2733;
+  background: #f3f6fb;
+}
+
+* { box-sizing: border-box; }
+
+body { margin: 0; }
+
+main {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 32px 20px;
+}
+
+.page-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 26px;
+}
+
+.logo {
+  width: 56px;
+  height: 56px;
+  border-radius: 14px;
+  background: #1f3864;
+  color: white;
+  display: grid;
+  place-items: center;
+  font-size: 22px;
+  font-weight: bold;
+}
+
+h1 { font-size: 27px; margin: 0 0 6px; }
+h2 { font-size: 20px; margin: 0 0 14px; }
+h3 { font-size: 16px; }
+
+.note { color: #64748b; line-height: 1.5; }
+
+.card {
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 26px;
+  margin-bottom: 22px;
+  box-shadow: 0 4px 16px #102a4310;
+}
+
+form {
+  display: grid;
+  gap: 16px;
+  max-width: 520px;
+}
+
+label {
+  display: grid;
+  gap: 8px;
+  font-weight: 600;
+}
+
+input {
+  padding: 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  font: inherit;
+  width: 100%;
+}
+
+input:focus-visible, button:focus-visible {
+  outline: 3px solid #e0a100;
+  outline-offset: 2px;
+}
+
+button {
+  padding: 12px 18px;
+  border: none;
+  border-radius: 8px;
+  background: #1f3864;
+  color: white;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+button:hover:not(:disabled) { background: #31558b; }
+
+button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.upload-zone {
+  border: 2px dashed #8ca6c8;
+  border-radius: 12px;
+  background: #f8fbff;
+  padding: 36px 18px;
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  gap: 12px;
+  text-align: center;
+  cursor: pointer;
+  color: #1f3864;
+}
+
+.upload-zone:hover { background: #edf5ff; }
+
+.upload-zone span { font-weight: normal; }
+
+.upload-zone input {
+  max-width: 320px;
+  font-size: 13px;
+}
+
+.upload-icon {
+  width: 55px;
+  height: 55px;
+  border-radius: 50%;
+  background: #dbeafe;
+  display: grid;
+  place-items: center;
+  font-size: 30px;
+}
+
+.selected-files {
+  margin-top: 22px;
+}
+
+.file-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px;
+  border-bottom: 1px solid #e2e8f0;
+  overflow-wrap: anywhere;
+}
+
+.upload-button {
+  margin-top: 20px;
+  width: 100%;
+}
+
+.section-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.secondary {
+  background: #e8eef7;
+  color: #1f3864;
+}
+
+.secondary:hover:not(:disabled) {
+  background: #d6e3f5;
+}
+
 .scroll { overflow-x: auto; margin-top: 16px; }
-table { border-collapse: collapse; width: 100%; font-size: 14px; }
-th, td { text-align: left; padding: 8px; border-bottom: 1px solid #d9dfe5; }
-.hash { font-family: monospace; font-size: 12px; }
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 14px;
+}
+
+th, td {
+  text-align: left;
+  padding: 12px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+th { background: #f8fafc; }
+
+.hash {
+  font-family: monospace;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.empty {
+  text-align: center;
+  color: #64748b;
+  padding: 30px;
+}
+
+.alert {
+  padding: 14px;
+  border-radius: 8px;
+  margin-bottom: 18px;
+  overflow-wrap: anywhere;
+}
+
+.error { background: #fff0f0; color: #b3261e; }
+.success { background: #e8f8ed; color: #16703c; }
+
+footer {
+  text-align: center;
+  color: #94a3b8;
+  font-size: 12px;
+  margin-top: 24px;
+}
+
+@media (max-width: 600px) {
+  main { padding: 16px 12px; }
+  .card { padding: 18px; }
+  h1 { font-size: 22px; }
+}
