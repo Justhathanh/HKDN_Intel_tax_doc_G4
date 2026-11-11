@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<HDon>
+    <DLHDon>
+        <TTChung>
+            <SHDon>0000123</SHDon>
+            <NLap>2026-11-10</NLap>
+        </TTChung>
+        <NDHDon>
+            <NBan>
+                <Ten>Cong ty TNHH Ban Hang</Ten>
+                <MST>0109876543</MST>
+            </NBan>
+            <NMua>
+                <Ten>Cong ty Co Phan Mua Hang</Ten>
+                <MST>0312345678</MST>
+            </NMua>
+            <TToan>
+                <TgTCThue>10000000</TgTCThue>
+                <TgTThue>1000000</TgTThue>
+                <TgTTTBSo>11000000</TgTTTBSo>
+            </TToan>
+        </NDHDon>
+    </DLHDon>
+</HDon>
