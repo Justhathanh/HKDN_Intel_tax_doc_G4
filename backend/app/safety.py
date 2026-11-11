@@ -39,6 +39,8 @@ def sniff(data: bytes) -> str | None:
         return "png"
     if data.startswith((b"PK\x03\x04", b"Rar!", b"7z\xbc\xaf", b"\x1f\x8b")):
         return "archive"
+    if data.startswith((b"\xff\xfe", b"\xfe\xff")):  # XML UTF-16 có BOM
+        return "xml" if data[:256].decode("utf-16", "ignore").lstrip().startswith("<") else None
     if data[:256].lstrip(b"\xef\xbb\xbf \t\r\n").startswith(b"<"):
         return "xml"
     return None
