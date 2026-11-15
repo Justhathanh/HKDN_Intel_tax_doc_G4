@@ -2,6 +2,11 @@
 import React, { useState } from "react";
 import { createRoot } from "react-dom/client";
 import "./app.css";
+import {
+  uploadDocument,
+  validateFile,
+  messageFor,
+} from "./uploadDocument";
 
 const API = import.meta.env.VITE_API ?? "http://localhost:8000";
 
@@ -100,83 +105,83 @@ function App() {
     setItems(manifest.items ?? []);
   }
 
-  function selectFiles(e) {
-    setError("");
-    setMessage("");
+ function selectFiles(e) {
+     setError("");
+     setMessage("");
 
-    const selected = Array.from(e.target.files ?? []);
-    const valid = [];
-    const invalid = [];
+  const selected = Array.from(e.target.files ?? []);
+  const valid = [];
+  const invalid = [];
 
-    selected.forEach((file) => {
-      const ext = file.name.split(".").pop().toLowerCase();
+  selected.forEach((file) => {
+    const errorCode = validateFile(file);
 
-      if (!FORMATS.includes(ext)) {
-        invalid.push(`${file.name}: Định dạng không hỗ trợ`);
-      } else {
-        valid.push(file);
-      }
-    });
+    if (errorCode) {
+      invalid.push(
+        `${file.name}: ${messageFor(errorCode, "File không hợp lệ.")}`
+      );
+    } else {
+      valid.push(file);
+    }
+  });
 
-    setFiles(valid);
-    if (invalid.length) setError(invalid.join(" | "));
+  setFiles(valid);
+
+  if (invalid.length) {
+    setError(invalid.join(" | "));
   }
+}
 
   async function upload() {
-    if (!session || !files.length || uploading) return;
+  if (!session || !files.length || uploading) return;
 
-    setUploading(true);
-    setError("");
-    setMessage("");
+  setUploading(true);
+  setError("");
+  setMessage("");
 
-    const failures = [];
-    let success = 0;
+  const failures = [];
+  let success = 0;
 
-    try {
-      for (const file of files) {
-        const body = new FormData();
-        body.append("file", file);
-
-        try {
-          await call(`/batches/${session.batchId}/documents`, {
-            method: "POST",
-            headers: {
-              ...headers(session.clientId),
-              "Idempotency-Key": crypto.randomUUID(),
-            },
-            body,
-          });
-          success++;
-        } catch (err) {
-          failures.push(`${file.name}: ${err.message}`);
-        }
-      }
-
-      if (success) {
-        setMessage(`Đã gửi thành công ${success} tài liệu.`);
-      }
-
-      if (failures.length) {
-        setError(failures.join(" | "));
-      }
-
-      if (success) {
-        setFiles([]);
-      }
-
+  try {
+    for (const file of files) {
       try {
-        await refresh(session);
+        await uploadDocument(
+          session.batchId,
+          file,
+          crypto.randomUUID(),
+          headers(session.clientId),
+        );
+
+        success++;
       } catch (err) {
-        setError((prev) =>
-          [prev, `Không tải được danh sách: ${err.message}`]
-            .filter(Boolean)
-            .join(" | ")
+        failures.push(
+          `${file.name}: ${err.message ?? "Upload thất bại"}`
         );
       }
-    } finally {
-      setUploading(false);
     }
+
+    if (success) {
+      setMessage(`Đã gửi thành công ${success} tài liệu.`);
+      setFiles([]);
+    }
+
+    if (failures.length) {
+      setError(failures.join(" | "));
+    }
+
+    try {
+      await refresh(session);
+    } catch (err) {
+      setError((prev) =>
+        [prev, `Không tải được danh sách: ${err.message}`]
+          .filter(Boolean)
+          .join(" | ")
+      );
+    }
+  } finally {
+    setUploading(false);
   }
+}
 
   return (
     <main>
