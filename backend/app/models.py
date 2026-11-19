@@ -27,6 +27,7 @@ class Batch(Base):
     __tablename__ = "batches"
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_id)
     client_id: Mapped[str] = mapped_column(ForeignKey("clients.id"), index=True)
+    entity_id: Mapped[str | None] = mapped_column(ForeignKey("tax_entities.id"), index=True)
     engagement_id: Mapped[str] = mapped_column(String(64))
     created_by: Mapped[str] = mapped_column(String(128))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
@@ -42,6 +43,7 @@ class Document(Base):
     )
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_id)
     client_id: Mapped[str] = mapped_column(ForeignKey("clients.id"), index=True)
+    entity_id: Mapped[str | None] = mapped_column(ForeignKey("tax_entities.id"), index=True)
     batch_id: Mapped[str] = mapped_column(ForeignKey("batches.id"), index=True)
     original_name: Mapped[str] = mapped_column(String(255))
     mime_type: Mapped[str] = mapped_column(String(128))
@@ -61,6 +63,7 @@ class Submission(Base):
     __table_args__ = (UniqueConstraint("client_id", "idempotency_key", name="uq_submissions_client_key"),)
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_id)
     client_id: Mapped[str] = mapped_column(ForeignKey("clients.id"), index=True)
+    entity_id: Mapped[str | None] = mapped_column(ForeignKey("tax_entities.id"), index=True)
     batch_id: Mapped[str] = mapped_column(ForeignKey("batches.id"), index=True)
     document_id: Mapped[str | None] = mapped_column(ForeignKey("documents.id"), index=True)
     idempotency_key: Mapped[str] = mapped_column(String(128))
@@ -107,6 +110,7 @@ class ProcessingJob(Base):
     )
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_id)  # job_id
     client_id: Mapped[str] = mapped_column(ForeignKey("clients.id"), index=True)
+    entity_id: Mapped[str | None] = mapped_column(ForeignKey("tax_entities.id"), index=True)
     document_id: Mapped[str] = mapped_column(ForeignKey("documents.id"), index=True)
     job_type: Mapped[str] = mapped_column(String(32))
     status: Mapped[str] = mapped_column(String(16))
