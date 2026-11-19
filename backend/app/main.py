@@ -102,7 +102,7 @@ def _accept(db: Session, batch: Batch, user: User, key: str, name: str, data: by
     if prior is not None:
         return _replay(db, prior, digest)
 
-    sub = Submission(client_id=batch.client_id, batch_id=batch.id, idempotency_key=key, file_name=name,
+    sub = Submission(client_id=batch.client_id, entity_id=batch.entity_id, batch_id=batch.id, idempotency_key=key, file_name=name,
                      sha256=digest, size=size, actor=user.name, outcome="accepted")
     if not verdict.ok and not verdict.quarantine:
         sub.outcome, sub.reason = "rejected", verdict.reason
@@ -153,6 +153,8 @@ def health() -> dict:
 def create_client(body: ClientIn, db: Session = Depends(get_db), user: User = Depends(current_user)):
     client = Client(name=body.name, tax_id=body.tax_id)
     db.add(client)
+    db.flush()
+    db.add(TaxEntity(client_id=client.id, tax_id=body.tax_id, legal_name=body.name))
     db.commit()
     return ClientOut(id=client.id, name=client.name, tax_id=client.tax_id)
 
@@ -171,7 +173,7 @@ def create_batch(body: BatchIn, db: Session = Depends(get_db), user: User = Depe
             TaxEntity.client_id == body.client_id, TaxEntity.is_active.is_(True)
         ).order_by(TaxEntity.created_at)).all()
         if len(entities) != 1:
-            raise ApiError("not_found" if not entities else "invalid_entity_selection")
+            raise ApiError("not_found" if not entities else "entity_selection_required")
         entity = entities[0]
     batch = Batch(client_id=body.client_id, entity_id=entity.id,
                   engagement_id=body.engagement_id, created_by=user.name)
