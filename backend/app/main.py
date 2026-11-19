@@ -14,7 +14,7 @@ from . import safety
 from .auth import User, current_user, require_scope
 from .db import get_db
 from .errors import ApiError, api_error_handler
-from .models import Batch, Client, Document, StateEvent, Submission
+from .models import Batch, Client, Document, StateEvent, Submission, TaxEntity
 from .schemas import BatchIn, BatchOut, ClientIn, ClientOut, DocumentOut, DocumentReceipt, ErrorBody, Manifest
 from .states import State
 from .storage import LocalWriteOnceStore, OriginalExists
@@ -124,7 +124,7 @@ def _accept(db: Session, batch: Batch, user: User, key: str, name: str, data: by
         db.commit()
         return _receipt(sub, existing, True, 200)
 
-    doc = Document(client_id=batch.client_id, batch_id=batch.id, original_name=name,
+    doc = Document(client_id=batch.client_id, entity_id=batch.entity_id, batch_id=batch.id, original_name=name,
                    mime_type=safety.MIME.get(verdict.kind or "", "application/octet-stream"),
                    size=size, page_count=verdict.page_count, sha256=digest,
                    storage_key=_save_original(batch.client_id, digest, data),
@@ -162,10 +162,23 @@ def create_batch(body: BatchIn, db: Session = Depends(get_db), user: User = Depe
     require_scope(user, body.client_id)
     if db.get(Client, body.client_id) is None:
         raise ApiError("not_found")
-    batch = Batch(client_id=body.client_id, engagement_id=body.engagement_id, created_by=user.name)
+    if body.entity_id:
+        entity = db.get(TaxEntity, body.entity_id)
+        if entity is None or entity.client_id != body.client_id or not entity.is_active:
+            raise ApiError("not_found")
+    else:
+        entities = db.scalars(select(TaxEntity).where(
+            TaxEntity.client_id == body.client_id, TaxEntity.is_active.is_(True)
+        ).order_by(TaxEntity.created_at)).all()
+        if len(entities) != 1:
+            raise ApiError("not_found" if not entities else "invalid_entity_selection")
+        entity = entities[0]
+    batch = Batch(client_id=body.client_id, entity_id=entity.id,
+                  engagement_id=body.engagement_id, created_by=user.name)
     db.add(batch)
     db.commit()
-    return BatchOut(id=batch.id, client_id=batch.client_id, engagement_id=batch.engagement_id)
+    return BatchOut(id=batch.id, client_id=batch.client_id,
+                    engagement_id=batch.engagement_id, entity_id=batch.entity_id)
 
 
 @app.post("/batches/{batch_id}/documents", status_code=201, response_model=DocumentReceipt,
