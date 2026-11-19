@@ -13,7 +13,8 @@ from app.models import Document, ProcessingJob
 from tests.test_processing_jobs import XML, upload
 
 S = JobStatus
-T0 = datetime(2026, 11, 19, 8, 0, tzinfo=timezone.utc)
+# Mốc thời gian tương đối: luôn ở tương lai so với lúc chạy, để job vừa tạo (next_attempt_at = giờ thật) đã đến hạn.
+T0 = datetime.now(timezone.utc).replace(microsecond=0) + timedelta(days=1)
 
 # Bảng chuyển trạng thái được thống nhất trong docs/G4T-67-state-machine-job.md.
 # Nếu ai sửa JOB_ALLOWED mà không sửa tài liệu thì test này báo.
