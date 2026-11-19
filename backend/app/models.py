@@ -126,3 +126,7 @@ class ProcessingJob(Base):
     error_code: Mapped[str | None] = mapped_column(String(64))
     error_message: Mapped[str | None] = mapped_column(String(300))
     error_retryable: Mapped[bool | None] = mapped_column(Boolean)
+
+
+# Register downstream tax-domain models in shared SQLAlchemy metadata.
+from . import domain_models as _domain_models  # noqa: E402,F401
