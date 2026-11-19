@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<HDon>
+  <DLHDon>
+    <TTChung>
+      <KHMSHDon>1</KHMSHDon>
+      <KHHDon>C26TAA</KHHDon>
+      <SHDon>00000046</SHDon>
+      <NLap>2026-11-14</NLap>
+      <DVTTe>VND</DVTTe>
+      <TTHDLQuan>
+        <TCHDon>1</TCHDon>
+        <LHDCLQuan>1</LHDCLQuan>
+        <KHMSHDCLQuan>1</KHMSHDCLQuan>
+        <KHHDCLQuan>C26TAA</KHHDCLQuan>
+        <SHDCLQuan>00000045</SHDCLQuan>
+        <NLHDCLQuan>2026-11-10</NLHDCLQuan>
+      </TTHDLQuan>
+    </TTChung>
+    <NDHDon>
+      <NBan><Ten>Công ty TNHH Thương Mại Mẫu Thử Một</Ten><MST>0109876543</MST></NBan>
+      <NMua><Ten>Công ty Cổ phần Dịch Vụ Mẫu Thử Hai</Ten><MST>0312345678</MST></NMua>
+      <TToan><TgTCThue>12000000</TgTCThue><TgTThue>1160000</TgTThue><TgTTTBSo>13160000</TgTTTBSo></TToan>
+    </NDHDon>
+  </DLHDon>
+</HDon>

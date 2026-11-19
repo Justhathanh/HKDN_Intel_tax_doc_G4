@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<TDiep>
+  <TTChung><MLTDiep>202</MLTDiep></TTChung>
+  <DLieu>
+    <HDon>
+      <DLHDon>
+        <TTChung><SHDon>00000099</SHDon><NLap>2026-11-15</NLap><DVTTe>VND</DVTTe></TTChung>
+        <NDHDon>
+          <NBan><Ten>Hộ kinh doanh Mẫu Thử Ba</Ten><MST>001234567890</MST></NBan>
+          <NMua><Ten>Công ty Cổ phần Dịch Vụ Mẫu Thử Hai</Ten><MST>0312345678</MST></NMua>
+          <TToan><TgTTTBSo>550000</TgTTTBSo></TToan>
+        </NDHDon>
+      </DLHDon>
+    </HDon>
+  </DLieu>
+</TDiep>

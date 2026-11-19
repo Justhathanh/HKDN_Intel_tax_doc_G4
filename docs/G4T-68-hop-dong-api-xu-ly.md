@@ -193,6 +193,10 @@ Frontend dựa vào `error_code` để xử lý; `message` là câu tiếng Vi�
 | `original_tampered` | false | Mã băm bản gốc không khớp, dừng xử lý |
 | `unsupported_document` | false | Loại tài liệu chưa hỗ trợ |
 | `parser_error` | false | Không đọc được cấu trúc tài liệu |
+| `xml_unsafe` | false | XML có DTD/entity/tham chiếu ngoài (G4T-61) |
+| `xml_malformed` | false | XML sai cú pháp (G4T-61) |
+| `xml_unsupported_variant` | false | XML không thuộc chuẩn đang hỗ trợ (G4T-61) |
+| `xml_schema_invalid` | false | XML thiếu phần bắt buộc hoặc có nhiều hóa đơn (G4T-61) |
 | `ocr_timeout` | true | OCR quá thời gian |
 | `ocr_unavailable` | true | OCR tạm không dùng được |
 | `quota_exceeded` | true | Chạm hạn mức dịch vụ |
