@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<HDon>
+  <DLHDon Id="data">
+    <TTChung>
+      <PBan>2.1.0</PBan>
+      <THDon>Hóa đơn giá trị gia tăng</THDon>
+      <KHMSHDon>1</KHMSHDon>
+      <KHHDon>C26TAA</KHHDon>
+      <SHDon>00000001</SHDon>
+      <NLap>2026-11-01</NLap>
+      <DVTTe>VND</DVTTe>
+      <TGia>1</TGia>
+    </TTChung>
+    <NDHDon>
+      <NBan>
+        <Ten>Công ty TNHH Cung Ứng Dịch Vụ Alpha</Ten>
+        <MST>0109876543</MST>
+        <DChi>Số 10 Đường Giả Định, Phường Dịch Vụ, Quận Hoàn Kiếm, Hà Nội</DChi>
+      </NBan>
+      <NMua>
+        <Ten>Công ty Cổ phần Thử Nghiệm Beta</Ten>
+        <MST>0312345678</MST>
+        <DChi>Số 20 Đường Thử Nghiệm, Quận 1, TP Hồ Chí Minh</DChi>
+      </NMua>
+      <DSHHDVu>
+        <HHDVu>
+          <STT>1</STT>
+          <THHDVu>Dịch vụ tư vấn phần mềm quản trị</THHDVu>
+          <ThTien>10000000</ThTien>
+          <TSuat>10%</TSuat>
+        </HHDVu>
+      </DSHHDVu>
+      <TToan>
+        <THTTLTSuat>
+          <LTSuat>
+            <TSuat>10%</TSuat>
+            <ThTien>10000000</ThTien>
+            <TThue>1000000</TThue>
+          </LTSuat>
+        </THTTLTSuat>
+        <TgTCThue>10000000</TgTCThue>
+        <TgTThue>1000000</TgTThue>
+        <TgTTTBSo>11000000</TgTTTBSo>
+        <TgTTTBChu>Mười một triệu đồng</TgTTTBChu>
+      </TToan>
+    </NDHDon>
+  </DLHDon>
+  <MCCQT>00ABCDEF0123456789ABCDEF0123456789</MCCQT>
+  <DSCKS>
+    <NBan>
+      <Signature xmlns="http://www.w3.org/2000/09/xmldsig#">
+        <SignatureValue>R0lBLUtZLUdJQS1TVEFOREFSRDEw==</SignatureValue>
+      </Signature>
+    </NBan>
+  </DSCKS>
+</HDon>

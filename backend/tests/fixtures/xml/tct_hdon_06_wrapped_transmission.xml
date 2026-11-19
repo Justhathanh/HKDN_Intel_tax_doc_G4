@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<TDiep>
+  <TTChung>
+    <PBan>2.0.0</PBan>
+    <MNGui>001234567890</MNGui>
+    <MNNhan>TCT</MNNhan>
+    <MLTDiep>202</MLTDiep>
+    <MTDiep>TCT000000000000000001</MTDiep>
+  </TTChung>
+  <DLieu>
+    <HDon>
+      <DLHDon>
+        <TTChung>
+          <KHMSHDon>2</KHMSHDon>
+          <KHHDon>C26TBB</KHHDon>
+          <SHDon>00000099</SHDon>
+          <NLap>2026-11-15</NLap>
+          <DVTTe>VND</DVTTe>
+        </TTChung>
+        <NDHDon>
+          <NBan>
+            <Ten>Hộ kinh doanh Mẫu Thử Ba</Ten>
+            <MST>001234567890</MST>
+          </NBan>
+          <NMua>
+            <Ten>Công ty Cổ phần Dịch Vụ Mẫu Thử Hai</Ten>
+            <MST>0312345678</MST>
+          </NMua>
+          <TToan>
+            <TgTCThue>500000</TgTCThue>
+            <TgTThue>50000</TgTThue>
+            <TgTTTBSo>550000</TgTTTBSo>
+          </TToan>
+        </NDHDon>
+      </DLHDon>
+    </HDon>
+  </DLieu>
+</TDiep>
