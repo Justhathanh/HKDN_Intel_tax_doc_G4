@@ -9,6 +9,7 @@ class ClientIn(BaseModel):
 class BatchIn(BaseModel):
     client_id: str
     engagement_id: str
+    entity_id: str | None = None
 
 
 class ClientOut(BaseModel):
@@ -21,6 +22,7 @@ class BatchOut(BaseModel):
     id: str
     client_id: str
     engagement_id: str
+    entity_id: str | None = None
 
 
 class ErrorBody(BaseModel):
