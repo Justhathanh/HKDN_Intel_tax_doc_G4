@@ -49,11 +49,14 @@ def upgrade() -> None:
         entity_by_client[client["id"]] = entity_id
 
     for table in ("batches", "documents", "submissions", "processing_jobs"):
-        op.add_column(table, sa.Column("entity_id", sa.String(36), nullable=True))
-        op.create_foreign_key(
-            f"fk_{table}_entity_id_tax_entities", table, "tax_entities",
-            ["entity_id"], ["id"]
-        )
+        # Batch mode keeps the migration usable with SQLite development databases
+        # as well as PostgreSQL production databases.
+        with op.batch_alter_table(table) as batch:
+            batch.add_column(sa.Column("entity_id", sa.String(36), nullable=True))
+            batch.create_foreign_key(
+                f"fk_{table}_entity_id_tax_entities", "tax_entities",
+                ["entity_id"], ["id"]
+            )
         op.create_index(f"ix_{table}_entity_id", table, ["entity_id"])
 
     for client_id, entity_id in entity_by_client.items():
@@ -285,7 +288,8 @@ def downgrade() -> None:
         op.drop_table(table)
     for table in ("processing_jobs", "submissions", "documents", "batches"):
         op.drop_index(f"ix_{table}_entity_id", table_name=table)
-        op.drop_constraint(f"fk_{table}_entity_id_tax_entities", table, type_="foreignkey")
-        op.drop_column(table, "entity_id")
+        with op.batch_alter_table(table) as batch:
+            batch.drop_constraint(f"fk_{table}_entity_id_tax_entities", type_="foreignkey")
+            batch.drop_column("entity_id")
     op.drop_index("ix_tax_entities_client_id", table_name="tax_entities")
     op.drop_table("tax_entities")
