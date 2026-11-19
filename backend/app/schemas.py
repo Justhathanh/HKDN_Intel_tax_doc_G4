@@ -79,3 +79,20 @@ class Manifest(BaseModel):
     submissions: int
     by_outcome: dict[str, int]
     items: list[ManifestItem]
+
+
+class TaxEntityIn(BaseModel):
+    tax_id: str
+    legal_name: str
+    address: str | None = None
+    representative_name: str | None = None
+
+
+class TaxEntityOut(BaseModel):
+    id: str
+    client_id: str
+    tax_id: str
+    legal_name: str
+    address: str | None = None
+    representative_name: str | None = None
+    is_active: bool
