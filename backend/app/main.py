@@ -16,7 +16,7 @@ from .db import get_db
 from .errors import ApiError, api_error_handler
 from .models import Batch, Client, Document, StateEvent, Submission
 from .domain_models import TaxEntity
-from .schemas import BatchIn, BatchOut, ClientIn, ClientOut, DocumentOut, DocumentReceipt, ErrorBody, Manifest
+from .schemas import (BatchIn, BatchOut, ClientIn, ClientOut, DocumentOut, DocumentReceipt,\n                      ErrorBody, Manifest, TaxEntityIn, TaxEntityOut)
 from .states import State
 from .storage import LocalWriteOnceStore, OriginalExists
 
@@ -158,6 +158,22 @@ def create_client(body: ClientIn, db: Session = Depends(get_db), user: User = De
     db.add(TaxEntity(client_id=client.id, tax_id=body.tax_id, legal_name=body.name))
     db.commit()
     return ClientOut(id=client.id, name=client.name, tax_id=client.tax_id)
+
+
+@app.post("/clients/{client_id}/entities", status_code=201, response_model=TaxEntityOut,
+          responses=_errors(401, 404))
+def create_tax_entity(client_id: str, body: TaxEntityIn, db: Session = Depends(get_db),
+                      user: User = Depends(current_user)):
+    require_scope(user, client_id)
+    if db.get(Client, client_id) is None:
+        raise ApiError("not_found")
+    entity = TaxEntity(client_id=client_id, tax_id=body.tax_id, legal_name=body.legal_name,
+                       address=body.address, representative_name=body.representative_name)
+    db.add(entity)
+    db.commit()
+    return TaxEntityOut(id=entity.id, client_id=entity.client_id, tax_id=entity.tax_id,
+                        legal_name=entity.legal_name, address=entity.address,
+                        representative_name=entity.representative_name, is_active=entity.is_active)
 
 
 @app.post("/batches", status_code=201, response_model=BatchOut, responses=_errors(401, 404))
