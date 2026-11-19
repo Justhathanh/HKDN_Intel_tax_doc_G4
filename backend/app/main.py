@@ -14,7 +14,8 @@ from . import safety
 from .auth import User, current_user, require_scope
 from .db import get_db
 from .errors import ApiError, api_error_handler
-from .models import Batch, Client, Document, StateEvent, Submission, TaxEntity
+from .models import Batch, Client, Document, StateEvent, Submission
+from .domain_models import TaxEntity
 from .schemas import BatchIn, BatchOut, ClientIn, ClientOut, DocumentOut, DocumentReceipt, ErrorBody, Manifest
 from .states import State
 from .storage import LocalWriteOnceStore, OriginalExists
