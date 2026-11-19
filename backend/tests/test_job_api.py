@@ -6,14 +6,14 @@ from app import jobs
 from app.db import SessionLocal
 from app.models import Document
 
-XML = b'<?xml version="1.0" encoding="UTF-8"?><HDon><SHDon>0000123</SHDon></HDon>'
+XML = b'<?xml version="1.0" encoding="UTF-8"?><kiem-tra/>'  # file an toàn trung tính, không phải hóa đơn
 T0 = datetime(2026, 11, 19, 8, 0, tzinfo=timezone.utc)
 JOB_KEYS = {"job_id", "document_id", "job_type", "status", "display_status", "will_retry", "attempt_no",
             "max_attempts", "retry_of_job_id", "correlation_id", "processor_version", "created_at",
             "next_attempt_at", "started_at", "finished_at", "error"}
 
 
-def setup_doc(api, tax_id="0312345678"):
+def setup_doc(api, tax_id="KH-1"):
     head = {"X-User": "u1"}
     cid = api.post("/clients", json={"name": "KH", "tax_id": tax_id}, headers=head).json()["id"]
     head["X-Client-Ids"] = cid
@@ -100,7 +100,7 @@ def test_other_job_type_filter(api):
 def test_cross_client_and_missing_return_404(api):
     doc_id, head = setup_doc(api)
     job_id = enqueue(doc_id)
-    _, other = setup_doc(api, tax_id="0398765432")
+    _, other = setup_doc(api, tax_id="KH-2")
     for path in (f"/jobs/{job_id}", f"/documents/{doc_id}/jobs", f"/jobs/{uuid.uuid4()}",
                  f"/documents/{uuid.uuid4()}/jobs"):
         r = api.get(path, headers=other)
