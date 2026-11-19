@@ -14,11 +14,12 @@ from app.db import SessionLocal
 from app.jobs import JobError, JobStatus
 from app.models import Document, ProcessingJob
 
-XML = b'<?xml version="1.0" encoding="UTF-8"?><HDon><SHDon>0000123</SHDon></HDon>'
+# Chỉ cần một file XML an toàn để tạo tài liệu; nội dung không phải hóa đơn, không phải dữ liệu mẫu nghiệp vụ.
+XML = b'<?xml version="1.0" encoding="UTF-8"?><kiem-tra/>'
 T0 = datetime(2026, 11, 19, 8, 0, tzinfo=timezone.utc)
 
 
-def upload(api, data=XML, name="a.xml", tax_id="0312345678"):
+def upload(api, data=XML, name="a.xml", tax_id="KH-1"):
     head = {"X-User": "u1"}
     cid = api.post("/clients", json={"name": "KH", "tax_id": tax_id}, headers=head).json()["id"]
     head["X-Client-Ids"] = cid
@@ -157,11 +158,11 @@ def test_error_metadata_is_safe(api):
     with SessionLocal() as db:
         job = jobs.enqueue(db, db.get(Document, doc_id))
         jobs.claim_next(db, "w")
-        jobs.fail(db, job, "Traceback ... MST 0312345678 /srv/originals/abc")
+        jobs.fail(db, job, "Traceback ... noi-dung-tai-lieu /srv/originals/abc")
         db.commit()
         assert job.error_code == "internal_error"
         assert job.error_message == jobs.SAFE_ERRORS["internal_error"][1]
-        assert "0312345678" not in job.error_message and "/srv" not in job.error_message
+        assert "noi-dung-tai-lieu" not in job.error_message and "/srv" not in job.error_message
 
 
 def test_backoff_is_capped():
@@ -193,7 +194,7 @@ def test_read_original_detects_tampering_and_missing(api):
         job = jobs.enqueue(db, db.get(Document, doc_id))
         path = main.store.root / db.get(Document, doc_id).storage_key
         os.chmod(path, 0o644)
-        path.write_bytes(b"<HDon>da bi sua</HDon>")
+        path.write_bytes(b"<kiem-tra>da bi sua</kiem-tra>")
         with pytest.raises(JobError) as tampered:
             jobs.read_original(main.store, db, job)
         assert tampered.value.code == "original_tampered"
@@ -221,8 +222,8 @@ def test_expired_lease_is_reclaimed(api):
 
 
 def test_jobs_follow_document_client(api):
-    a = upload(api, tax_id="0312345678")
-    b = upload(api, data=XML + b" ", tax_id="0109876543")
+    a = upload(api, tax_id="KH-1")
+    b = upload(api, data=XML + b" ", tax_id="KH-2")
     with SessionLocal() as db:
         ja, jb = (jobs.enqueue(db, db.get(Document, d)) for d in (a, b))
         assert ja.client_id != jb.client_id
