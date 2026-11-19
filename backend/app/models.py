@@ -2,7 +2,7 @@
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Integer, String, Text, UniqueConstraint, text
+from sqlalchemy import Boolean, CheckConstraint, DateTime, ForeignKey, Index, Integer, String, Text, UniqueConstraint, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from .db import Base
@@ -95,6 +95,10 @@ class ProcessingJob(Base):
     __tablename__ = "processing_jobs"
     __table_args__ = (
         UniqueConstraint("document_id", "job_type", "attempt_no", name="uq_jobs_document_type_attempt"),
+        # G4T-67: database cũng từ chối trạng thái lạ và số lần thử sai, kể cả khi ai đó sửa thẳng bằng SQL.
+        CheckConstraint("status IN ('queued', 'running', 'succeeded', 'failed', 'dead_letter')",
+                        name="ck_jobs_status"),
+        CheckConstraint("attempt_no >= 1 AND attempt_no <= max_attempts", name="ck_jobs_attempt_range"),
         Index("ix_jobs_status_next_attempt", "status", "next_attempt_at"),
         # Mỗi tài liệu chỉ có tối đa một job đang chờ hoặc đang chạy cho mỗi loại việc.
         Index("uq_jobs_one_active", "document_id", "job_type", unique=True,

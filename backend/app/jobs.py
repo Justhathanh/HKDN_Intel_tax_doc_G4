@@ -1,4 +1,5 @@
-"""Vòng đời của processing job (G4T-66). Thiết kế: docs/G4T-66-thiet-ke-processing-job.md
+"""Vòng đời của processing job (G4T-66, G4T-67).
+Thiết kế: docs/G4T-66-thiet-ke-processing-job.md, docs/G4T-67-state-machine-job.md
 
 Module này chỉ quản lý trạng thái job. Việc đổi trạng thái tài liệu (received -> processing ...)
 thuộc worker và vẫn phải đi qua states.check_transition.
@@ -29,12 +30,25 @@ class JobStatus(StrEnum):
     DEAD_LETTER = "dead_letter"
 
 
-JOB_ALLOWED: dict[JobStatus, set[JobStatus]] = {
-    JobStatus.QUEUED: {JobStatus.RUNNING},
-    JobStatus.RUNNING: {JobStatus.SUCCEEDED, JobStatus.FAILED, JobStatus.DEAD_LETTER},
-    JobStatus.SUCCEEDED: set(),
-    JobStatus.FAILED: set(),
-    JobStatus.DEAD_LETTER: set(),
+# State machine của MỘT dòng job (G4T-67). Thử lại không đưa dòng cũ về queued mà tạo dòng mới
+# (attempt_no + 1), nên failed vẫn là trạng thái cuối của dòng đó.
+JOB_ALLOWED: dict[JobStatus, frozenset[JobStatus]] = {
+    JobStatus.QUEUED: frozenset({JobStatus.RUNNING}),
+    JobStatus.RUNNING: frozenset({JobStatus.SUCCEEDED, JobStatus.FAILED, JobStatus.DEAD_LETTER}),
+    JobStatus.SUCCEEDED: frozenset(),
+    JobStatus.FAILED: frozenset(),
+    JobStatus.DEAD_LETTER: frozenset(),
+}
+ACTIVE_JOB_STATUSES = frozenset({JobStatus.QUEUED, JobStatus.RUNNING})
+TERMINAL_JOB_STATUSES = frozenset(s for s, targets in JOB_ALLOWED.items() if not targets)
+
+# Lý do bị chặn, dùng cho thông báo lỗi và tài liệu.
+_BLOCKED_REASON = {
+    JobStatus.QUEUED: "job chưa được worker nhận, chỉ có thể chuyển sang running",
+    JobStatus.RUNNING: "job đang chạy chỉ kết thúc bằng succeeded, failed hoặc dead_letter",
+    JobStatus.SUCCEEDED: "succeeded là trạng thái cuối; muốn chạy lại phải tạo job mới",
+    JobStatus.FAILED: "failed là trạng thái cuối của lần thử này; lần thử lại là một dòng job mới",
+    JobStatus.DEAD_LETTER: "dead_letter là trạng thái cuối; cần người xem xét trước khi tạo job mới",
 }
 
 # Chỉ lưu mã lỗi và câu thông báo trong danh sách này, không bao giờ lưu nội dung exception:
@@ -76,9 +90,18 @@ def _aware(value: datetime) -> datetime:
     return value if value.tzinfo else value.replace(tzinfo=timezone.utc)
 
 
-def check_job_transition(current: str, target: JobStatus) -> None:
-    if target not in JOB_ALLOWED[JobStatus(current)]:
-        raise IllegalJobTransition(f"{current} -> {target}")
+def is_terminal(status: str) -> bool:
+    return JobStatus(status) in TERMINAL_JOB_STATUSES
+
+
+def check_job_transition(current: str, target: str) -> None:
+    """Chặn mọi chuyển trạng thái không có trong JOB_ALLOWED, kể cả giá trị lạ và chuyển về chính nó."""
+    try:
+        source, dest = JobStatus(current), JobStatus(target)
+    except ValueError as exc:
+        raise IllegalJobTransition(f"trạng thái không hợp lệ: {current} -> {target}") from exc
+    if dest not in JOB_ALLOWED[source]:
+        raise IllegalJobTransition(f"{source} -> {dest}: {_BLOCKED_REASON[source]}")
 
 
 def safe_error(code: str) -> tuple[str, bool, str]:
@@ -95,7 +118,7 @@ def backoff(attempt_no: int) -> timedelta:
 def active_job(db: Session, document_id: str, job_type: str) -> ProcessingJob | None:
     return db.scalar(select(ProcessingJob).where(
         ProcessingJob.document_id == document_id, ProcessingJob.job_type == job_type,
-        ProcessingJob.status.in_([JobStatus.QUEUED, JobStatus.RUNNING])))
+        ProcessingJob.status.in_(ACTIVE_JOB_STATUSES)))
 
 
 def enqueue(db: Session, document: Document, job_type: str = "extract", correlation_id: str | None = None,
