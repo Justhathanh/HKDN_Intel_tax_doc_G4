@@ -10,12 +10,14 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from . import jobs as job_lifecycle
 from . import safety
 from .auth import User, current_user, require_scope
 from .db import get_db
 from .errors import ApiError, api_error_handler
-from .models import Batch, Client, Document, StateEvent, Submission
-from .schemas import BatchIn, BatchOut, ClientIn, ClientOut, DocumentOut, DocumentReceipt, ErrorBody, Manifest
+from .models import Batch, Client, Document, ProcessingJob, StateEvent, Submission
+from .schemas import (BatchIn, BatchOut, ClientIn, ClientOut, DocumentOut, DocumentReceipt, ErrorBody, JobErrorOut,
+                      JobList, JobOut, Manifest)
 from .states import State
 from .storage import LocalWriteOnceStore, OriginalExists
 
@@ -225,3 +227,46 @@ def manifest(batch_id: str, db: Session = Depends(get_db), user: User = Depends(
         "submission_id": s.id, "file_name": s.file_name, "size": s.size, "sha256": s.sha256, "outcome": s.outcome,
         "reason": s.reason, "document_id": s.document_id, "status": status, "uploaded_by": s.actor,
         "received_at": _iso(s.received_at)} for s, status in rows])
+
+
+def _iso_or_none(value: datetime | None) -> str | None:
+    return _iso(value) if value is not None else None
+
+
+def _job_out(job: ProcessingJob) -> JobOut:
+    status = job_lifecycle.JobStatus(job.status)
+    error = None
+    if job.error_code:
+        error = JobErrorOut(code=job.error_code, message=job.error_message or "", retryable=bool(job.error_retryable))
+    return JobOut(
+        job_id=job.id, document_id=job.document_id, job_type=job.job_type, status=status,
+        display_status=job_lifecycle.DISPLAY_STATUS[status], will_retry=status == job_lifecycle.JobStatus.FAILED,
+        attempt_no=job.attempt_no, max_attempts=job.max_attempts, retry_of_job_id=job.retry_of_job_id,
+        correlation_id=job.correlation_id, processor_version=job.processor_version,
+        created_at=_iso(job.created_at), next_attempt_at=_iso(job.next_attempt_at),
+        started_at=_iso_or_none(job.started_at), finished_at=_iso_or_none(job.finished_at), error=error)
+
+
+@app.get("/jobs/{job_id}", response_model=JobOut, responses=_errors(401, 404))
+def get_job(job_id: str, db: Session = Depends(get_db), user: User = Depends(current_user)):
+    """Trạng thái một lần thử xử lý. Job của khách hàng khác trả 404 như không tồn tại."""
+    job = db.get(ProcessingJob, job_id)
+    if job is None:
+        raise ApiError("not_found")
+    require_scope(user, job.client_id)
+    return _job_out(job)
+
+
+@app.get("/documents/{document_id}/jobs", response_model=JobList, responses=_errors(401, 404))
+def list_document_jobs(document_id: str, job_type: str = "extract", db: Session = Depends(get_db),
+                       user: User = Depends(current_user)):
+    """Lịch sử các lần thử của một tài liệu, cũ trước mới sau; latest là lần thử mới nhất."""
+    doc = db.get(Document, document_id)
+    if doc is None:
+        raise ApiError("not_found")
+    require_scope(user, doc.client_id)
+    rows = db.scalars(select(ProcessingJob).where(
+        ProcessingJob.document_id == doc.id, ProcessingJob.job_type == job_type)
+        .order_by(ProcessingJob.attempt_no)).all()
+    items = [_job_out(job) for job in rows]
+    return JobList(document_id=doc.id, latest=items[-1] if items else None, items=items)

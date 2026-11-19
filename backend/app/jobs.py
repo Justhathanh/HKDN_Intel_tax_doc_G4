@@ -90,6 +90,16 @@ def _aware(value: datetime) -> datetime:
     return value if value.tzinfo else value.replace(tzinfo=timezone.utc)
 
 
+# G4T-68: giao diện hiển thị 4 trạng thái như Jira G4T-39; dead_letter hiện là FAILED và will_retry = False.
+DISPLAY_STATUS: dict[JobStatus, str] = {
+    JobStatus.QUEUED: "QUEUED",
+    JobStatus.RUNNING: "RUNNING",
+    JobStatus.SUCCEEDED: "SUCCEEDED",
+    JobStatus.FAILED: "FAILED",
+    JobStatus.DEAD_LETTER: "FAILED",
+}
+
+
 def is_terminal(status: str) -> bool:
     return JobStatus(status) in TERMINAL_JOB_STATUSES
 
