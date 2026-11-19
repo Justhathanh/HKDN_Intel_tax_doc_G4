@@ -6,21 +6,25 @@ Mục tiêu theo Jira: parse trực tiếp XML hóa đơn điện tử theo các
 RFP liên quan: EXT 02 (mapping có phiên bản, kiểm tra schema), EXT 03 (trường header), EXT 05 (bằng chứng XML path),
 EXT 06 (chuẩn hóa, thiếu là chưa biết), DAT 03 (cấu trúc trường), SEC 04 (chặn XXE), VN 01/02 (Unicode, MST, vòng đời).
 
-Code: `backend/app/xml_parser.py` · Test: `backend/tests/test_xml_parser.py` · Mẫu: `backend/tests/fixtures/xml/`
+Code: `backend/app/xml_parser.py` · Test: `backend/tests/test_xml_parser.py`
+
+> **Trạng thái: đang chờ G4T-42 và G4T-39.** Jira ghi G4T-61 *is blocked by* G4T-42 (dataset tổng hợp, Khiêm) và
+> G4T-39 (hàng đợi + worker, Thuận). Bản này mới có parser, phần an toàn và mã lỗi. **Không có dữ liệu hóa đơn tự tạo.**
+> Mẫu XML và test trích xuất trường sẽ lấy từ dataset G4T-42 sau khi dataset được đưa lên và review.
 
 ## 1. Đối chiếu tiêu chí nghiệm thu
 
-| Tiêu chí (Jira G4T-61) | Cách đáp ứng | Test |
+| Tiêu chí (Jira G4T-61) | Tình trạng | Ghi chú |
 |---|---|---|
-| Có mẫu XML hợp lệ cho từng chuẩn được hỗ trợ | 4 mẫu giả cho biến thể `tct-hdon-v1`: đầu vào, đầu ra có namespace, hóa đơn thay thế, hóa đơn bọc trong thông điệp | `test_incoming_…`, `test_outgoing_…`, `test_replacement_…`, `test_wrapped_…` |
-| Parse thành cấu trúc dữ liệu có schema rõ ràng | `XmlParseResult` / `ExtractedField` (Pydantic), mỗi trường có trạng thái | toàn bộ |
-| Giữ MST và số hóa đơn dạng chuỗi, cả số 0 đầu; bảo toàn Unicode | Không bao giờ ép sang số; giữ `raw_value` nguyên văn, `normalized_value` chuẩn NFC | `test_identifiers_…`, `test_vietnamese_unicode_…`, `test_decomposed_unicode_…`, `test_utf16_…` |
-| XML sai cấu trúc trả lỗi có mã và thông điệp rõ ràng | `XmlParseError.code` + `.message` (mục 6) | `test_errors_have_code_and_message`, `test_two_invoices_…` |
-| Chặn DTD / external entities (XXE) | `defusedxml` với `forbid_dtd`, `forbid_entities`, `forbid_external` | 3 ca XXE trong `test_errors_…` |
-| Kết quả liên kết `document_id`, `job_id`, có XML path | Mỗi kết quả mang `document_id`, `job_id`; mỗi trường có `xml_path` tuyệt đối | `test_xml_path_…`, `test_worker_flow_links_…` |
+| Có mẫu XML hợp lệ cho từng chuẩn được hỗ trợ | ⏳ Chờ G4T-42 | Mẫu do Khiêm tạo trong dataset, PO xác nhận chuẩn. Không tự tạo mẫu |
+| Parse thành cấu trúc dữ liệu có schema rõ ràng | ✔ Code xong, ⏳ test trên dataset | `XmlParseResult` / `ExtractedField` (Pydantic) |
+| Giữ MST và số hóa đơn dạng chuỗi, cả số 0 đầu; bảo toàn Unicode | ✔ Code xong, ⏳ test trên dataset | Không ép sang số; giữ `raw_value` nguyên văn, `normalized_value` chuẩn NFC |
+| XML sai cấu trúc trả lỗi có mã và thông điệp rõ ràng | ✔ Có test | `test_errors_have_code_and_message`, `test_error_does_not_leak_document_content` |
+| Chặn DTD / external entities (XXE) | ✔ Có test | 3 chuỗi tấn công trong `test_errors_have_code_and_message` |
+| Kết quả liên kết `document_id`, `job_id`, có XML path | ✔ Code xong, ⏳ test trên dataset | `test_empty_skeleton_…` kiểm tra liên kết và XML path; test với giá trị thật chờ dataset |
 
-Kiểm tra thêm: thử cố ý phá 6 chỗ (cho phép DTD, bỏ số 0 đầu, dùng float, thiếu thành 0, bỏ kiểm tra trùng, mất dấu),
-test đều bắt được.
+Việc còn lại khi G4T-42 có: review dataset (đúng chuẩn PO xác nhận, có Ground Truth JSON), chạy parser trên dataset,
+so với Ground Truth, sửa mapping nếu lệch, viết test trích xuất trường dựa trên dataset đó.
 
 ## 2. Biến thể và mapping
 
@@ -82,33 +86,25 @@ Thiếu **không bao giờ** thành 0 (EXT 06).
 
 Hướng hóa đơn (EXT 03): khách hàng là bên mua → `incoming`; là bên bán → `outgoing`; cả hai hoặc không → `conflict`.
 
-## 5. Ví dụ kết quả (rút gọn từ `tct_hdon_incoming.xml`)
+## 5. Cấu trúc kết quả
 
-```json
-{
-  "document_id": "84307d9b-e88a-492d-9c27-939e1a3c8159",
-  "job_id": "661969c2-c28a-449e-b103-8d0ded9ddc04",
-  "processor": "xml-parser",
-  "processor_version": "0.2.0",
-  "mapping_version": "tct-hdon-v1",
-  "outcome": "parsed",
-  "schema_check": { "passed": true, "missing_required": [], "conflicts": [] },
-  "fields": [
-    { "field_name": "invoice_number", "raw_value": "00000045", "normalized_value": "00000045",
-      "field_status": "present", "xml_path": "/HDon/DLHDon/TTChung/SHDon", "extraction_method": "xml" },
-    { "field_name": "seller_tax_id", "raw_value": "0109876543", "normalized_value": "0109876543",
-      "field_status": "present", "xml_path": "/HDon/DLHDon/NDHDon/NBan/MST", "extraction_method": "xml" },
-    { "field_name": "tax_breakdown[2].tax_amount", "raw_value": "160000", "normalized_value": "160000",
-      "field_status": "present", "xml_path": "/HDon/DLHDon/NDHDon/TToan/THTTLTSuat/LTSuat[2]/TThue",
-      "extraction_method": "xml" },
-    { "field_name": "related_invoice_number", "raw_value": null, "normalized_value": null,
-      "field_status": "not_present", "xml_path": "/HDon/DLHDon/TTChung/TTHDLQuan/SHDCLQuan",
-      "extraction_method": "xml" },
-    { "field_name": "direction", "raw_value": null, "normalized_value": "incoming",
-      "field_status": "present", "xml_path": null, "extraction_method": "xml" }
-  ]
-}
+```text
+XmlParseResult
+  document_id, job_id            liên kết tài liệu và lần thử (G4T-68)
+  processor, processor_version   "xml-parser", phiên bản code
+  mapping_version                ví dụ "tct-hdon-v1"
+  outcome                        "parsed"
+  schema_check                   passed, missing_required[], conflicts[]
+  fields[]                       ExtractedField
+    field_name                   tên trường ở mục 2
+    raw_value                    chuỗi gốc trong XML (null nếu không có)
+    normalized_value             giá trị chuẩn hóa (null nếu không có hoặc cần xem lại)
+    field_status                 present | missing | not_present | needs_review | conflict
+    xml_path                     đường dẫn tuyệt đối, ví dụ /HDon/DLHDon/TTChung/SHDon
+    extraction_method            "xml"
 ```
+
+Ví dụ có giá trị sẽ lấy từ dataset G4T-42, không tự tạo.
 
 ## 6. Mã lỗi
 
@@ -140,14 +136,14 @@ except XmlParseError as err:
     jobs.fail(db, job, err.code)
 ```
 
-Test `test_worker_flow_links_result_to_document_and_job` chạy đúng luồng này với file upload qua API.
+Test `test_worker_flow_unsupported_xml_goes_to_dead_letter_with_code` chạy luồng lỗi với file upload qua API. Luồng thành công sẽ test trên dataset G4T-42.
 
 ## 8. An toàn
 
 - Parser: `defusedxml`, chặn DTD, entity, tham chiếu ngoài; không tải gì từ mạng.
 - Lúc upload, `app/safety.py` đã cách ly XML không an toàn; parser chặn thêm một lần nữa.
 - Bản gốc chỉ đọc, kiểm tra mã băm trước khi parse (G4T-66); parser không ghi gì ra đĩa.
-- Mẫu test là dữ liệu giả; không đưa hóa đơn thật vào repo công khai.
+- Không có hóa đơn mẫu tự tạo trong repo; không đưa hóa đơn thật của khách hàng vào repo công khai.
 - Parse đúng không có nghĩa hóa đơn hợp lệ, chữ ký đúng hay được khấu trừ (EXT 02, VN 06). Parser không kiểm tra chữ ký.
 
 ## 9. Ngoài phạm vi / cần làm tiếp
