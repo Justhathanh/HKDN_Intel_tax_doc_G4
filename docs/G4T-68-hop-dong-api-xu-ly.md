@@ -72,34 +72,35 @@ Request và các lỗi giữ nguyên như `docs/G4T-10-thiet-ke-api-upload.md`. 
 |---|---|---|
 | `job_id` | `string \| null` | File mới hợp lệ: id của job `queued` vừa tạo. Gửi trùng (200): job mới nhất của tài liệu đã có. File bị cách ly/từ chối: không có job, trả lỗi như hiện tại. |
 
-Upload phải trả về ngay sau khi lưu bản gốc và tạo job; không chờ worker. Phản hồi hiện tại (chưa có `job_id`):
+Upload phải trả về ngay sau khi lưu bản gốc và tạo job; không chờ worker. Cấu trúc phản hồi hiện tại (chưa có `job_id`;
+giá trị trong `<…>` là mô tả kiểu, không phải dữ liệu):
 
 ```json
 {
-  "document_id": "84307d9b-e88a-492d-9c27-939e1a3c8159",
-  "submission_id": "2616ec4d-fa04-40bd-99a2-3f4a75a1b6d4",
-  "batch_id": "30a6096f-a3a5-4b2c-a020-16f7bba7b62e",
-  "file_name": "hoa-don-mau.xml",
-  "size": 73,
-  "sha256": "780cd26aaf6ab18dd8b68afdb9910a4c054b0af56b49db047911f45a334aef56",
-  "mime_type": "application/xml",
-  "page_count": null,
+  "document_id": "<uuid>",
+  "submission_id": "<uuid>",
+  "batch_id": "<uuid>",
+  "file_name": "<tên file gốc, đã làm sạch>",
+  "size": "<số byte>",
+  "sha256": "<64 ký tự hex>",
+  "mime_type": "application/xml | application/pdf | image/jpeg | image/png",
+  "page_count": "<số trang | null>",
   "channel": "browser",
-  "uploaded_by": "ke-toan-1",
+  "uploaded_by": "<X-User>",
   "status": "received",
   "duplicate": false,
-  "received_at": "2026-11-19T06:31:49.868378Z"
+  "received_at": "<ISO 8601 UTC, kết thúc bằng Z>"
 }
 ```
 
 ### 4.2 `GET /jobs/{job_id}` (đã cài)
 
-Trạng thái một lần thử. Mã: 200, 401, 404.
+Trạng thái một lần thử. Mã: 200, 401, 404. Giá trị trong `<…>` là mô tả kiểu.
 
 ```json
 {
-  "job_id": "152ce82b-e031-42b1-8f95-ccfc5afed2e9",
-  "document_id": "84307d9b-e88a-492d-9c27-939e1a3c8159",
+  "job_id": "<uuid>",
+  "document_id": "<uuid>",
   "job_type": "extract",
   "status": "queued",
   "display_status": "QUEUED",
@@ -107,10 +108,10 @@ Trạng thái một lần thử. Mã: 200, 401, 404.
   "attempt_no": 1,
   "max_attempts": 3,
   "retry_of_job_id": null,
-  "correlation_id": "7f3c2a9e-req",
+  "correlation_id": "<uuid hoặc id do client gửi>",
   "processor_version": null,
-  "created_at": "2026-11-19T06:31:49.878489Z",
-  "next_attempt_at": "2026-11-19T06:31:49.878492Z",
+  "created_at": "<ISO 8601 UTC>",
+  "next_attempt_at": "<ISO 8601 UTC>",
   "started_at": null,
   "finished_at": null,
   "error": null
@@ -128,26 +129,26 @@ Trạng thái một lần thử. Mã: 200, 401, 404.
 ### 4.3 `GET /documents/{document_id}/jobs?job_type=extract` (đã cài)
 
 Lịch sử các lần thử của một tài liệu, cũ trước mới sau. `latest` là lần thử mới nhất (hoặc `null` nếu chưa có job).
-`job_type` mặc định `extract`. Mã: 200, 401, 404. Ví dụ sau một lần lỗi tạm thời:
+`job_type` mặc định `extract`. Mã: 200, 401, 404. Cấu trúc khi lần thử 1 lỗi tạm thời và lần thử 2 đang chờ:
 
 ```json
 {
-  "document_id": "84307d9b-e88a-492d-9c27-939e1a3c8159",
-  "latest": { "job_id": "661969c2-…", "status": "queued", "display_status": "QUEUED", "attempt_no": 2,
-              "retry_of_job_id": "152ce82b-…", "next_attempt_at": "2026-11-20T01:01:10Z", "error": null, "…": "…" },
+  "document_id": "<uuid A>",
+  "latest": { "job_id": "<uuid C>", "status": "queued", "display_status": "QUEUED", "attempt_no": 2,
+              "retry_of_job_id": "<uuid B>", "next_attempt_at": "<ISO 8601 UTC>", "error": null, "…": "…" },
   "items": [
     {
-      "job_id": "152ce82b-e031-42b1-8f95-ccfc5afed2e9",
+      "job_id": "<uuid B>",
       "status": "failed",
       "display_status": "FAILED",
       "will_retry": true,
       "attempt_no": 1,
-      "started_at": "2026-11-20T01:00:00Z",
-      "finished_at": "2026-11-20T01:00:40Z",
+      "started_at": "<ISO 8601 UTC>",
+      "finished_at": "<ISO 8601 UTC>",
       "error": { "code": "ocr_timeout", "message": "Dịch vụ OCR phản hồi quá thời gian.", "retryable": true },
       "…": "các trường còn lại như 4.2"
     },
-    { "job_id": "661969c2-c28a-449e-b103-8d0ded9ddc04", "status": "queued", "attempt_no": 2, "…": "…" }
+    { "job_id": "<uuid C>", "status": "queued", "attempt_no": 2, "…": "…" }
   ]
 }
 ```
@@ -210,7 +211,7 @@ mỗi hàm chỉ `flush`, worker tự `commit`.
 |---|---|---|
 | Nhận việc | `claim_next(db, worker_id, job_type="extract")` | Trả `None` nếu không có job đến hạn |
 | Đọc bản gốc | `read_original(store, db, job)` | Ném `JobError("original_missing" / "original_tampered")` |
-| Báo xong | `succeed(db, job, processor_version)` | `processor_version` ví dụ `"xml-parser 0.1"` |
+| Báo xong | `succeed(db, job, processor_version)` | Tên và phiên bản bộ xử lý đã chạy |
 | Báo lỗi | `fail(db, job, code, processor_version=None)` | Chỉ truyền mã trong mục 6.2; tự tạo lần thử lại nếu được |
 | Dọn job treo | `reclaim_expired(db)` | Chạy định kỳ (ví dụ mỗi phút) |
 
@@ -221,7 +222,7 @@ if job:
         data = jobs.read_original(store, db, job)
         result = parse(data)                      # G4T-61 / G4T-62
         save_result(db, job, result)              # lưu kèm document_id + job_id
-        jobs.succeed(db, job, processor_version="xml-parser 0.1")
+        jobs.succeed(db, job, processor_version=PARSER_VERSION)
     except jobs.JobError as err:
         jobs.fail(db, job, err.code)
     except Exception:
@@ -236,10 +237,10 @@ Không ghi nội dung tài liệu, MST, số hóa đơn hay nội dung exception
 
 ```json
 {
-  "document_id": "84307d9b-e88a-492d-9c27-939e1a3c8159",
-  "job_id": "661969c2-c28a-449e-b103-8d0ded9ddc04",
+  "document_id": "<uuid>",
+  "job_id": "<uuid>",
   "processor": "xml-parser",
-  "processor_version": "0.1",
+  "processor_version": "<phiên bản>",
   "outcome": "parsed",
   "…": "phần riêng: trường hóa đơn kèm XML path (G4T-61) hoặc chữ theo page_number (G4T-62)"
 }
