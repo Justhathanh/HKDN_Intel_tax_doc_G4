@@ -257,6 +257,22 @@ def test_mime_comes_from_content_not_client(api):
                  headers={**head, "Idempotency-Key": "k"})
     assert r.json()["mime_type"] == "application/xml"
 
+def test_upload_rejects_pdf_claimed_as_png_by_filename_and_mime(api):
+    bid, headers = setup(api)
+    response = api.post(
+        f"/batches/{bid}/documents",
+        files={"file": ("hoa-don.png", pdf(), "image/png")},
+        headers={**headers, "Idempotency-Key": "g4t-17-pdf-as-png"},
+    )
+
+    assert response.status_code == 415, response.text
+    assert response.json()["error_code"] == "extension_content_mismatch"
+
+    item = manifest(api, bid, headers)["items"][0]
+    assert item["status"] == "quarantined"
+    assert item["reason"] == "extension_content_mismatch"
+
+
 
 def test_originals_cannot_be_overwritten(tmp_path):
     s = LocalWriteOnceStore(str(tmp_path))
