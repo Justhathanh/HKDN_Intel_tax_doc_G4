@@ -7,7 +7,8 @@ from app.db import SessionLocal
 from app.models import Document
 
 XML = b'<?xml version="1.0" encoding="UTF-8"?><kiem-tra/>'  # file an toàn trung tính, không phải hóa đơn
-T0 = datetime(2026, 11, 19, 8, 0, tzinfo=timezone.utc)
+# Mốc thời gian tương đối: luôn ở sau lúc job được tạo (next_attempt_at = giờ thật).
+T0 = datetime.now(timezone.utc).replace(microsecond=0) + timedelta(days=1)
 JOB_KEYS = {"job_id", "document_id", "job_type", "status", "display_status", "will_retry", "attempt_no",
             "max_attempts", "retry_of_job_id", "correlation_id", "processor_version", "created_at",
             "next_attempt_at", "started_at", "finished_at", "error"}
