@@ -16,7 +16,8 @@ from app.models import Document, ProcessingJob
 
 # Chỉ cần một file XML an toàn để tạo tài liệu; nội dung không phải hóa đơn, không phải dữ liệu mẫu nghiệp vụ.
 XML = b'<?xml version="1.0" encoding="UTF-8"?><kiem-tra/>'
-T0 = datetime(2026, 11, 19, 8, 0, tzinfo=timezone.utc)
+# Mốc thời gian tương đối: luôn ở tương lai so với lúc chạy, để job vừa tạo (next_attempt_at = giờ thật) đã đến hạn.
+T0 = datetime.now(timezone.utc).replace(microsecond=0) + timedelta(days=1)
 
 
 def upload(api, data=XML, name="a.xml", tax_id="KH-1"):
