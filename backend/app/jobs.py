@@ -1,5 +1,5 @@
-"""Vòng đời của processing job (G4T-66, G4T-67).
-Thiết kế: docs/G4T-66-thiet-ke-processing-job.md, docs/G4T-67-state-machine-job.md
+"""Vòng đời của processing job, chính sách retry, dead-letter và lịch sử chạy (G4T-66, G4T-67, G4T-73..76).
+Thiết kế: docs/G4T-66-thiet-ke-processing-job.md, docs/G4T-67-state-machine-job.md, docs/G4T-73-chinh-sach-retry-dlq.md
 
 Module này chỉ quản lý trạng thái job. Việc đổi trạng thái tài liệu (received -> processing ...)
 thuộc worker và vẫn phải đi qua states.check_transition.
@@ -9,8 +9,8 @@ import uuid
 from datetime import datetime, timedelta, timezone
 from enum import StrEnum
 
-from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy import exists, func, select
+from sqlalchemy.orm import Session, aliased
 
 from .models import Document, ProcessingJob
 from .states import State
@@ -65,6 +65,9 @@ SAFE_ERRORS: dict[str, tuple[bool, str]] = {
     "internal_error": (True, "Lỗi nội bộ khi xử lý."),
 }
 
+RETRYABLE_ERRORS: frozenset[str] = frozenset(code for code, (retryable, _) in SAFE_ERRORS.items() if retryable)
+NON_RETRYABLE_ERRORS: frozenset[str] = frozenset(code for code, (retryable, _) in SAFE_ERRORS.items() if not retryable)
+
 
 class IllegalJobTransition(ValueError):
     pass
@@ -115,6 +118,26 @@ def backoff(attempt_no: int) -> timedelta:
     return min(BACKOFF_BASE * (2 ** (attempt_no - 1)), BACKOFF_MAX)
 
 
+def retry_policy() -> dict:
+    """Trả về cấu hình chính sách retry hiện hành (G4T-73)."""
+    return {
+        "default_max_attempts": DEFAULT_MAX_ATTEMPTS,
+        "backoff_base_seconds": int(BACKOFF_BASE.total_seconds()),
+        "backoff_max_seconds": int(BACKOFF_MAX.total_seconds()),
+        "default_lease_seconds": int(DEFAULT_LEASE.total_seconds()),
+        "retryable_errors": sorted(RETRYABLE_ERRORS),
+        "non_retryable_errors": sorted(NON_RETRYABLE_ERRORS),
+    }
+
+
+def duration_ms(job: ProcessingJob) -> int | None:
+    """Tính thời lượng xử lý (ms) giữa started_at và finished_at cho lịch sử chạy (G4T-76)."""
+    if job.started_at is None or job.finished_at is None:
+        return None
+    delta = _aware(job.finished_at) - _aware(job.started_at)
+    return max(0, int(delta.total_seconds() * 1000))
+
+
 def active_job(db: Session, document_id: str, job_type: str) -> ProcessingJob | None:
     return db.scalar(select(ProcessingJob).where(
         ProcessingJob.document_id == document_id, ProcessingJob.job_type == job_type,
@@ -132,8 +155,10 @@ def enqueue(db: Session, document: Document, job_type: str = "extract", correlat
     last = db.scalar(select(ProcessingJob.attempt_no).where(
         ProcessingJob.document_id == document.id, ProcessingJob.job_type == job_type)
         .order_by(ProcessingJob.attempt_no.desc()).limit(1)) or 0
+    next_attempt = last + 1
     job = ProcessingJob(client_id=document.client_id, document_id=document.id, job_type=job_type,
-                        status=JobStatus.QUEUED, attempt_no=last + 1, max_attempts=max_attempts,
+                        status=JobStatus.QUEUED, attempt_no=next_attempt,
+                        max_attempts=max(max_attempts, next_attempt),
                         correlation_id=correlation_id or str(uuid.uuid4()), input_sha256=document.sha256)
     db.add(job)
     db.flush()
@@ -212,3 +237,81 @@ def reclaim_expired(db: Session, now: datetime | None = None) -> list[Processing
         if retry is not None:
             retries.append(retry)
     return retries
+
+
+def retry_dead_letter(db: Session, job: ProcessingJob, correlation_id: str | None = None,
+                      now: datetime | None = None) -> tuple[ProcessingJob, bool]:
+    """Tạo lần thử mới từ một job ở trạng thái dead_letter (G4T-74, G4T-75).
+
+    Trả về (job_kết_quả, vừa_tạo_mới). Nếu đã có job đang chờ/chạy cho tài liệu này thì trả về luôn job đó
+    để tránh xử lý trùng lặp khi người dùng bấm thử lại nhiều lần.
+    """
+    existing = active_job(db, job.document_id, job.job_type)
+    if existing is not None:
+        return existing, False
+    if job.status != JobStatus.DEAD_LETTER:
+        raise IllegalJobTransition(f"chỉ có thể thử lại job ở trạng thái dead_letter (hiện tại: {job.status})")
+
+    last = db.scalar(select(ProcessingJob.attempt_no).where(
+        ProcessingJob.document_id == job.document_id, ProcessingJob.job_type == job.job_type)
+        .order_by(ProcessingJob.attempt_no.desc()).limit(1)) or job.attempt_no
+    if last > job.attempt_no:
+        raise IllegalJobTransition("đã tồn tại lần thử mới hơn cho tài liệu này")
+
+    document = db.get(Document, job.document_id)
+    if document is None or document.status in (State.QUARANTINED, State.REJECTED):
+        raise NotProcessable(document.status if document else "missing_document")
+
+    next_attempt = last + 1
+    retry = ProcessingJob(
+        client_id=job.client_id,
+        document_id=job.document_id,
+        job_type=job.job_type,
+        status=JobStatus.QUEUED,
+        attempt_no=next_attempt,
+        max_attempts=max(job.max_attempts, next_attempt),
+        retry_of_job_id=job.id,
+        correlation_id=correlation_id or job.correlation_id,
+        input_sha256=document.sha256,
+        next_attempt_at=now or _now(),
+    )
+    db.add(retry)
+    db.flush()
+    return retry, True
+
+
+def list_dead_letter_jobs(db: Session, client_ids: set[str], unresolved_only: bool = True,
+                          limit: int = 50, offset: int = 0) -> tuple[list[ProcessingJob], int]:
+    """Lấy danh sách job nằm trong Dead Letter Queue thuộc phạm vi client_ids được cấp quyền (G4T-75)."""
+    if not client_ids:
+        return [], 0
+    newer = aliased(ProcessingJob)
+    stmt = select(ProcessingJob).where(
+        ProcessingJob.client_id.in_(client_ids),
+        ProcessingJob.status == JobStatus.DEAD_LETTER,
+    )
+    if unresolved_only:
+        stmt = stmt.where(
+            ~exists(
+                select(newer.id).where(
+                    newer.document_id == ProcessingJob.document_id,
+                    newer.job_type == ProcessingJob.job_type,
+                    newer.attempt_no > ProcessingJob.attempt_no,
+                )
+            )
+        )
+    total = db.scalar(select(func.count()).select_from(stmt.subquery())) or 0
+    rows = db.scalars(
+        stmt.order_by(ProcessingJob.finished_at.desc(), ProcessingJob.created_at.desc())
+        .offset(offset)
+        .limit(limit)
+    ).all()
+    return list(rows), total
+
+
+def list_document_jobs(db: Session, document_id: str, job_type: str | None = None) -> list[ProcessingJob]:
+    """Trả về toàn bộ lịch sử các lần chạy job của một tài liệu theo thứ tự attempt_no (G4T-76)."""
+    stmt = select(ProcessingJob).where(ProcessingJob.document_id == document_id)
+    if job_type is not None:
+        stmt = stmt.where(ProcessingJob.job_type == job_type)
+    return list(db.scalars(stmt.order_by(ProcessingJob.attempt_no.asc(), ProcessingJob.created_at.asc())).all())
