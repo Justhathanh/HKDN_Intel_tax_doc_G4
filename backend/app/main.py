@@ -3,7 +3,7 @@ import unicodedata
 from datetime import datetime, timezone
 from typing import Annotated
 
-from fastapi import Depends, FastAPI, File, Header, UploadFile
+from fastapi import Depends, FastAPI, File, Header, Query, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sqlalchemy import func, select
@@ -14,8 +14,21 @@ from . import jobs, safety
 from .auth import User, current_user, require_scope
 from .db import get_db
 from .errors import ApiError, api_error_handler
-from .models import Batch, Client, Document, StateEvent, Submission
-from .schemas import BatchIn, BatchOut, ClientIn, ClientOut, DocumentOut, DocumentReceipt, ErrorBody, Manifest
+from .models import Batch, Client, Document, ProcessingJob, StateEvent, Submission
+from .schemas import (
+    BatchIn,
+    BatchOut,
+    ClientIn,
+    ClientOut,
+    DeadLetterListOut,
+    DocumentOut,
+    DocumentReceipt,
+    ErrorBody,
+    JobHistoryOut,
+    JobOut,
+    Manifest,
+    RetryPolicyOut,
+)
 from .states import State
 from .storage import LocalWriteOnceStore, OriginalExists
 
@@ -27,7 +40,7 @@ store = LocalWriteOnceStore()
 # Mô tả viết tường minh để đặc tả không đổi theo phiên bản Python
 _ERROR_DESCRIPTIONS = {
     400: "Yêu cầu không hợp lệ", 401: "Chưa xác thực", 404: "Không tìm thấy hoặc không có quyền",
-    409: "Idempotency-Key đã dùng cho file khác", 413: "File quá lớn", 415: "Định dạng không được hỗ trợ",
+    409: "Xung đột trạng thái hoặc Idempotency-Key", 413: "File quá lớn", 415: "Định dạng không được hỗ trợ",
     422: "File không xử lý được",
 }
 
@@ -67,6 +80,30 @@ def _receipt(sub: Submission, doc: Document, duplicate: bool, status_code: int) 
         channel=sub.channel, uploaded_by=sub.actor, status=doc.status, duplicate=duplicate,
         received_at=_iso(sub.received_at))
     return JSONResponse(status_code=status_code, content=body.model_dump())
+
+
+def _job_out(job: ProcessingJob) -> JobOut:
+    return JobOut(
+        job_id=job.id,
+        client_id=job.client_id,
+        document_id=job.document_id,
+        job_type=job.job_type,
+        status=job.status,
+        attempt_no=job.attempt_no,
+        max_attempts=job.max_attempts,
+        retry_of_job_id=job.retry_of_job_id,
+        correlation_id=job.correlation_id,
+        input_sha256=job.input_sha256,
+        processor_version=job.processor_version,
+        created_at=_iso(job.created_at),
+        next_attempt_at=_iso(job.next_attempt_at),
+        started_at=_iso(job.started_at) if job.started_at else None,
+        finished_at=_iso(job.finished_at) if job.finished_at else None,
+        duration_ms=jobs.duration_ms(job),
+        error_code=job.error_code,
+        error_message=job.error_message,
+        error_retryable=job.error_retryable,
+    )
 
 
 def _read_limited(file: UploadFile) -> bytes | None:
@@ -151,6 +188,11 @@ def health() -> dict:
     return {"status": "ok"}
 
 
+@app.get("/retry-policy", response_model=RetryPolicyOut, responses=_errors(401))
+def get_retry_policy(_: User = Depends(current_user)) -> RetryPolicyOut:
+    return RetryPolicyOut(**jobs.retry_policy())
+
+
 @app.post("/clients", status_code=201, response_model=ClientOut, responses=_errors(401))
 def create_client(body: ClientIn, db: Session = Depends(get_db), user: User = Depends(current_user)):
     client = Client(name=body.name, tax_id=body.tax_id)
@@ -214,6 +256,78 @@ def get_document(document_id: str, db: Session = Depends(get_db), user: User = D
     return DocumentOut(document_id=doc.id, batch_id=doc.batch_id, file_name=doc.original_name, size=doc.size,
                        sha256=doc.sha256, mime_type=doc.mime_type, page_count=doc.page_count, status=doc.status,
                        uploaded_by=doc.uploaded_by, received_at=_iso(doc.received_at))
+
+
+@app.get("/documents/{document_id}/jobs", response_model=JobHistoryOut, responses=_errors(401, 404))
+def get_document_jobs(
+    document_id: str,
+    job_type: str | None = None,
+    db: Session = Depends(get_db),
+    user: User = Depends(current_user),
+):
+    doc = db.get(Document, document_id)
+    if doc is None:
+        raise ApiError("not_found")
+    require_scope(user, doc.client_id)
+    items = jobs.list_document_jobs(db, doc.id, job_type=job_type)
+    current_status = items[-1].status if items else None
+    return JobHistoryOut(
+        document_id=doc.id,
+        total_attempts=len(items),
+        current_status=current_status,
+        items=[_job_out(j) for j in items],
+    )
+
+
+@app.get("/jobs/dead-letter", response_model=DeadLetterListOut, responses=_errors(401))
+def list_dead_letter(
+    unresolved_only: bool = True,
+    limit: Annotated[int, Query(ge=1, le=200)] = 50,
+    offset: Annotated[int, Query(ge=0)] = 0,
+    db: Session = Depends(get_db),
+    user: User = Depends(current_user),
+):
+    rows, total = jobs.list_dead_letter_jobs(
+        db, user.client_ids, unresolved_only=unresolved_only, limit=limit, offset=offset
+    )
+    return DeadLetterListOut(total=total, items=[_job_out(j) for j in rows])
+
+
+@app.get("/jobs/{job_id}", response_model=JobOut, responses=_errors(401, 404))
+def get_job(job_id: str, db: Session = Depends(get_db), user: User = Depends(current_user)):
+    job = db.get(ProcessingJob, job_id)
+    if job is None:
+        raise ApiError("not_found")
+    require_scope(user, job.client_id)
+    return _job_out(job)
+
+
+@app.post(
+    "/jobs/{job_id}/retry",
+    status_code=201,
+    response_model=JobOut,
+    responses={200: {"model": JobOut, "description": "Job đang chờ hoặc đang chạy"}, **_errors(401, 404, 409, 422)},
+)
+def retry_job(job_id: str, db: Session = Depends(get_db), user: User = Depends(current_user)):
+    job = db.get(ProcessingJob, job_id)
+    if job is None:
+        raise ApiError("not_found")
+    require_scope(user, job.client_id)
+    try:
+        retried, created = jobs.retry_dead_letter(db, job)
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        existing = jobs.active_job(db, job.document_id, job.job_type)
+        if existing is None:
+            raise
+        retried, created = existing, False
+    except jobs.IllegalJobTransition as exc:
+        raise ApiError("job_not_retryable", document_id=job.document_id) from exc
+    except jobs.NotProcessable as exc:
+        raise ApiError("quarantined", document_id=job.document_id) from exc
+
+    return JSONResponse(status_code=201 if created else 200, content=_job_out(retried).model_dump())
 
 
 @app.get("/batches/{batch_id}/manifest", response_model=Manifest, responses=_errors(401, 404))
