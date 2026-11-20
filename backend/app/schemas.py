@@ -77,3 +77,46 @@ class Manifest(BaseModel):
     submissions: int
     by_outcome: dict[str, int]
     items: list[ManifestItem]
+
+
+class RetryPolicyOut(BaseModel):
+    default_max_attempts: int
+    backoff_base_seconds: int
+    backoff_max_seconds: int
+    default_lease_seconds: int
+    retryable_errors: list[str]
+    non_retryable_errors: list[str]
+
+
+class JobOut(BaseModel):
+    job_id: str
+    client_id: str
+    document_id: str
+    job_type: str
+    status: str
+    attempt_no: int
+    max_attempts: int
+    retry_of_job_id: str | None
+    correlation_id: str
+    input_sha256: str
+    processor_version: str | None
+    created_at: str
+    next_attempt_at: str
+    started_at: str | None
+    finished_at: str | None
+    duration_ms: int | None
+    error_code: str | None
+    error_message: str | None
+    error_retryable: bool | None
+
+
+class JobHistoryOut(BaseModel):
+    document_id: str
+    total_attempts: int
+    current_status: str | None
+    items: list[JobOut]
+
+
+class DeadLetterListOut(BaseModel):
+    total: int
+    items: list[JobOut]
