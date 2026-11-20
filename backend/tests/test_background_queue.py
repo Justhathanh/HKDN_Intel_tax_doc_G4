@@ -145,4 +145,4 @@ def test_worker_moves_tampered_original_to_dead_letter(tmp_path, monkeypatch):
     with SessionTesting() as db:
         job = db.get(ProcessingJob, processed_id)
         assert job.status == JobStatus.DEAD_LETTER
-        assert job.last_error_code == "original_tampered"
+        assert job.error_code == "original_tampered"
