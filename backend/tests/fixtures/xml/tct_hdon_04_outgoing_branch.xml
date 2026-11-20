@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<inv:HDon xmlns:inv="urn:example:hoadon-gia">
+  <inv:DLHDon>
+    <inv:TTChung>
+      <inv:KHMSHDon>1</inv:KHMSHDon>
+      <inv:KHHDon>K26TBB</inv:KHHDon>
+      <inv:SHDon>0000007</inv:SHDon>
+      <inv:NLap>2026-11-12T09:30:00</inv:NLap>
+      <inv:DVTTe>USD</inv:DVTTe>
+      <inv:TGia>25350.5</inv:TGia>
+    </inv:TTChung>
+    <inv:NDHDon>
+      <inv:NBan>
+        <inv:Ten>Công ty Cổ phần Dịch Vụ Mẫu Thử Hai - Chi nhánh Đà Nẵng</inv:Ten>
+        <inv:MST>0312345678-001</inv:MST>
+        <inv:DChi>Số 88 Đường Bạch Đằng, Quận Hải Châu, Đà Nẵng</inv:DChi>
+      </inv:NBan>
+      <inv:NMua>
+        <inv:Ten>Example Trading Pte. Ltd.</inv:Ten>
+      </inv:NMua>
+      <inv:TToan>
+        <inv:TgTCThue>1500.00</inv:TgTCThue>
+        <inv:TgTThue>0</inv:TgTThue>
+        <inv:TgTTTBSo>1500.00</inv:TgTTTBSo>
+      </inv:TToan>
+    </inv:NDHDon>
+  </inv:DLHDon>
+</inv:HDon>
