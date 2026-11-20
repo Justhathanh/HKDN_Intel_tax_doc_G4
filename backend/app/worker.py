@@ -58,9 +58,12 @@ def process_one(
         except jobs.JobError as exc:
             jobs.fail(db, job, exc.code)
             logger.warning("job_failed job_id=%s code=%s", job_id, exc.code)
-        except Exception:
-            jobs.fail(db, job, "internal_error")
-            logger.exception("job_unexpected_error job_id=%s", job_id)
+        except Exception as exc:
+            db.rollback()
+            job = db.get(ProcessingJob, job_id)
+            if job is not None:
+                jobs.fail(db, job, "internal_error")
+            logger.error("job_unexpected_error job_id=%s type=%s", job_id, type(exc).__name__)
         db.commit()
     return job_id
 
