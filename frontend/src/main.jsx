@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import "./app.css";
 import {
@@ -21,7 +21,6 @@ const LABEL = {
 };
 
 const ACCEPT = ".pdf,.jpg,.jpeg,.png,.xml";
-const FORMATS = ["pdf", "jpg", "jpeg", "png", "xml"];
 
 function App() {
   const [form, setForm] = useState({
@@ -29,13 +28,29 @@ function App() {
     tax_id: "",
     engagement: "",
   });
+
   const [session, setSession] = useState(null);
   const [items, setItems] = useState([]);
   const [files, setFiles] = useState([]);
+
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [refreshError, setRefreshError] = useState("");
+  const [hasLoaded, setHasLoaded] = useState(false);
+
+  const [selectedDocumentId, setSelectedDocumentId] = useState(null);
+
+  const refreshInFlight = useRef(false);
+  const refreshPending = useRef(false);
+  const sessionRef = useRef(null);
+
+  const selectedDocument = items.find(
+    (item) => item.document_id === selectedDocumentId
+  );
 
   const headers = (ids) => ({
     "X-User": "nhanvien.dev",
@@ -47,13 +62,19 @@ function App() {
     const body = await res.json().catch(() => null);
 
     if (!res.ok) {
-      throw new Error(body?.message ?? `Lỗi ${res.status}`);
+      throw new Error(
+        body?.message ??
+        body?.detail ??
+        `Lỗi HTTP ${res.status}`
+      );
     }
+
     return body;
   }
 
   async function start(e) {
     e.preventDefault();
+
     setError("");
     setMessage("");
     setLoading(true);
@@ -83,110 +104,197 @@ function App() {
         }),
       });
 
-      setSession({
+      setItems([]);
+      setFiles([]);
+      setHasLoaded(false);
+      setRefreshError("");
+      setSelectedDocumentId(null);
+
+      const newSession = {
         clientId: client.id,
         batchId: batch.id,
         name: client.name,
-      });
-      setItems([]);
+      };
+
+      sessionRef.current = newSession;
+      setSession(newSession);
       setMessage("Tạo lô hồ sơ thành công!");
     } catch (err) {
-      setError(err.message);
+      setError(err.message ?? "Không thể tạo lô hồ sơ.");
     } finally {
       setLoading(false);
     }
   }
 
-  async function refresh(s) {
-    const manifest = await call(
-      `/batches/${s.batchId}/manifest`,
-      { headers: headers(s.clientId) }
-    );
-    setItems(manifest.items ?? []);
-  }
+  async function refresh(s, signal) {
+    if (!s || signal?.aborted) return;
 
- function selectFiles(e) {
-     setError("");
-     setMessage("");
-
-  const selected = Array.from(e.target.files ?? []);
-  const valid = [];
-  const invalid = [];
-
-  selected.forEach((file) => {
-    const errorCode = validateFile(file);
-
-    if (errorCode) {
-      invalid.push(
-        `${file.name}: ${messageFor(errorCode, "File không hợp lệ.")}`
-      );
-    } else {
-      valid.push(file);
-    }
-  });
-
-  setFiles(valid);
-
-  if (invalid.length) {
-    setError(invalid.join(" | "));
-  }
-}
-
-  async function upload() {
-  if (!session || !files.length || uploading) return;
-
-  setUploading(true);
-  setError("");
-  setMessage("");
-
-  const failures = [];
-  let success = 0;
-
-  try {
-    for (const file of files) {
-      try {
-        await uploadDocument(
-          session.batchId,
-          file,
-          crypto.randomUUID(),
-          headers(session.clientId),
-        );
-
-        success++;
-      } catch (err) {
-        failures.push(
-          `${file.name}: ${err.message ?? "Upload thất bại"}`
-        );
-      }
+    if (refreshInFlight.current) {
+      refreshPending.current = true;
+      return;
     }
 
-    if (success) {
-      setMessage(`Đã gửi thành công ${success} tài liệu.`);
-      setFiles([]);
-    }
-
-    if (failures.length) {
-      setError(failures.join(" | "));
-    }
+    refreshInFlight.current = true;
+    setRefreshing(true);
+    setRefreshError("");
 
     try {
-      await refresh(session);
-    } catch (err) {
-      setError((prev) =>
-        [prev, `Không tải được danh sách: ${err.message}`]
-          .filter(Boolean)
-          .join(" | ")
+      const manifest = await call(
+        `/batches/${encodeURIComponent(s.batchId)}/manifest`,
+        {
+          headers: headers(s.clientId),
+          signal,
+        }
       );
+
+      if (
+        !signal?.aborted &&
+        sessionRef.current?.batchId === s.batchId
+      ) {
+        setItems(manifest.items ?? []);
+        setHasLoaded(true);
+      }
+    } catch (err) {
+      if (
+        err.name !== "AbortError" &&
+        !signal?.aborted &&
+        sessionRef.current?.batchId === s.batchId
+      ) {
+        setRefreshError(err.message ?? "Không thể cập nhật.");
+        throw err;
+      }
+    } finally {
+      refreshInFlight.current = false;
+
+      if (
+        !signal?.aborted &&
+        sessionRef.current?.batchId === s.batchId
+      ) {
+        setRefreshing(false);
+
+        if (refreshPending.current) {
+          refreshPending.current = false;
+          refresh(s, signal).catch(() => {});
+        }
+      }
     }
-  } finally {
-    setUploading(false);
   }
-}
+
+  useEffect(() => {
+    if (!session) return;
+
+    const controller = new AbortController();
+
+    sessionRef.current = session;
+
+    refresh(session, controller.signal).catch(() => {});
+
+    const interval = setInterval(() => {
+      if (document.visibilityState === "visible") {
+        refresh(session, controller.signal).catch(() => {});
+      }
+    }, 5000);
+
+    return () => {
+      clearInterval(interval);
+      controller.abort();
+      refreshPending.current = false;
+    };
+  }, [session]);
+
+  function selectFiles(e) {
+    setError("");
+    setMessage("");
+
+    const selected = Array.from(e.target.files ?? []);
+    const valid = [];
+    const invalid = [];
+
+    selected.forEach((file) => {
+      const errorCode = validateFile(file);
+
+      if (errorCode) {
+        invalid.push(
+          `${file.name}: ${messageFor(
+            errorCode,
+            "File không hợp lệ."
+          )}`
+        );
+      } else {
+        valid.push(file);
+      }
+    });
+
+    setFiles(valid);
+
+    if (invalid.length) {
+      setError(invalid.join(" | "));
+    }
+  }
+
+  async function upload() {
+    if (!session || !files.length || uploading) return;
+
+    setUploading(true);
+    setError("");
+    setMessage("");
+
+    const failures = [];
+    let success = 0;
+
+    try {
+      for (const file of files) {
+        try {
+          await uploadDocument(
+            session.batchId,
+            file,
+            crypto.randomUUID(),
+            headers(session.clientId)
+          );
+
+          success++;
+        } catch (err) {
+          failures.push(
+            `${file.name}: ${
+              err.message ?? "Upload thất bại"
+            }`
+          );
+        }
+      }
+
+      if (success) {
+        setMessage(
+          `Đã gửi thành công ${success} tài liệu.`
+        );
+        setFiles([]);
+      }
+
+      if (failures.length) {
+        setError(failures.join(" | "));
+      }
+
+      try {
+        await refresh(session);
+      } catch (err) {
+        setError((prev) =>
+          [
+            prev,
+            `Không tải được danh sách: ${err.message}`,
+          ]
+            .filter(Boolean)
+            .join(" | ")
+        );
+      }
+    } finally {
+      setUploading(false);
+    }
+  }
 
   return (
     <main>
       <header className="page-header">
         <div className="logo">TH</div>
+
         <div>
           <h1>Tiếp nhận hồ sơ thuế</h1>
           <p className="note">
@@ -196,7 +304,9 @@ function App() {
       </header>
 
       {error && (
-        <div className="alert error" role="alert">{error}</div>
+        <div className="alert error" role="alert">
+          {error}
+        </div>
       )}
 
       {message && (
@@ -208,6 +318,7 @@ function App() {
       {!session ? (
         <section className="card">
           <h2>Tạo lô hồ sơ mới</h2>
+
           <p className="note">
             Nhập thông tin khách hàng để bắt đầu tải tài liệu.
           </p>
@@ -219,7 +330,10 @@ function App() {
                 required
                 value={form.name}
                 onChange={(e) =>
-                  setForm({ ...form, name: e.target.value })
+                  setForm({
+                    ...form,
+                    name: e.target.value,
+                  })
                 }
                 placeholder="Nhập tên khách hàng"
               />
@@ -231,7 +345,10 @@ function App() {
                 required
                 value={form.tax_id}
                 onChange={(e) =>
-                  setForm({ ...form, tax_id: e.target.value })
+                  setForm({
+                    ...form,
+                    tax_id: e.target.value,
+                  })
                 }
                 placeholder="Nhập mã số thuế"
               />
@@ -243,7 +360,10 @@ function App() {
                 required
                 value={form.engagement}
                 onChange={(e) =>
-                  setForm({ ...form, engagement: e.target.value })
+                  setForm({
+                    ...form,
+                    engagement: e.target.value,
+                  })
                 }
                 placeholder="Nhập mã hợp đồng"
               />
@@ -258,9 +378,12 @@ function App() {
         <>
           <section className="card">
             <h2>Thông tin lô hồ sơ</h2>
+
             <p>
-              <strong>Khách hàng:</strong> {session.name}
+              <strong>Khách hàng:</strong>{" "}
+              {session.name}
             </p>
+
             <p className="note">
               Mã lô: {session.batchId}
             </p>
@@ -268,32 +391,54 @@ function App() {
 
           <section className="card">
             <h2>Tải lên tài liệu</h2>
+
             <p className="note">
               Hỗ trợ PDF, JPG, PNG và XML.
             </p>
 
             <label className="upload-zone">
               <span className="upload-icon">↑</span>
-              <strong>Nhấn để chọn tài liệu</strong>
-              <span>Có thể chọn nhiều file cùng lúc</span>
+
+              <strong>
+                Nhấn để chọn tài liệu
+              </strong>
+
+              <span>
+                Có thể chọn nhiều file cùng lúc
+              </span>
+
               <input
                 type="file"
                 accept={ACCEPT}
                 multiple
                 disabled={uploading}
                 onChange={selectFiles}
-                onClick={(e) => { e.target.value = ""; }}
+                onClick={(e) => {
+                  e.target.value = "";
+                }}
               />
             </label>
 
             {files.length > 0 && (
               <div className="selected-files">
-                <h3>File đã chọn ({files.length})</h3>
+                <h3>
+                  File đã chọn ({files.length})
+                </h3>
+
                 {files.map((file, index) => (
-                  <div className="file-row" key={index}>
+                  <div
+                    className="file-row"
+                    key={`${file.name}-${index}`}
+                  >
                     <span>{file.name}</span>
+
                     <span>
-                      {(file.size / 1024 / 1024).toFixed(2)} MB
+                      {(
+                        file.size /
+                        1024 /
+                        1024
+                      ).toFixed(2)}{" "}
+                      MB
                     </span>
                   </div>
                 ))}
@@ -314,20 +459,41 @@ function App() {
           <section className="card">
             <div className="section-heading">
               <h2>Danh sách tài liệu</h2>
+
               <button
+                type="button"
                 className="secondary"
-                disabled={uploading}
-                onClick={async () => {
-                  try {
-                    await refresh(session);
-                  } catch (err) {
-                    setError(err.message);
-                  }
+                disabled={uploading || refreshing}
+                onClick={() => {
+                  refresh(session).catch(() => {});
                 }}
               >
-                Làm mới
+                {refreshing
+                  ? "Đang cập nhật..."
+                  : "Làm mới"}
               </button>
             </div>
+
+            <p className="note">
+              Trạng thái tài liệu được tự động cập nhật
+              mỗi 5 giây khi trang đang hiển thị.
+            </p>
+
+            {refreshing && (
+              <p className="note" role="status">
+                Đang cập nhật trạng thái tài liệu...
+              </p>
+            )}
+
+            {refreshError && (
+              <div
+                className="alert error"
+                role="alert"
+              >
+                Không thể cập nhật danh sách:{" "}
+                {refreshError}
+              </div>
+            )}
 
             <div className="scroll">
               <table>
@@ -338,23 +504,70 @@ function App() {
                     <th>Trạng thái</th>
                     <th>Lý do</th>
                     <th>Document ID</th>
+                    <th>Chi tiết</th>
                   </tr>
                 </thead>
+
                 <tbody>
-                  {items.length === 0 ? (
+                  {!hasLoaded && refreshing ? (
                     <tr>
-                      <td colSpan="5" className="empty">
-                        Chưa có tài liệu để hiển thị
+                      <td
+                        colSpan="6"
+                        className="empty"
+                      >
+                        Đang tải danh sách tài liệu...
+                      </td>
+                    </tr>
+                  ) : items.length === 0 ? (
+                    <tr>
+                      <td
+                        colSpan="6"
+                        className="empty"
+                      >
+                        {refreshError && !hasLoaded
+                          ? "Chưa thể tải danh sách tài liệu"
+                          : "Chưa có tài liệu để hiển thị"}
                       </td>
                     </tr>
                   ) : (
                     items.map((r, index) => (
-                      <tr key={r.submission_id ?? index}>
+                      <tr
+                        key={r.submission_id ?? index}
+                      >
                         <td>{r.file_name}</td>
-                        <td>{r.outcome}</td>
-                        <td>{LABEL[r.status] ?? r.status ?? "Không xử lý"}</td>
-                        <td>{r.reason ?? ""}</td>
-                        <td className="hash">{r.document_id ?? ""}</td>
+
+                        <td>
+                          {r.outcome ?? "—"}
+                        </td>
+
+                        <td>
+                          {LABEL[r.status] ??
+                            r.status ??
+                            "Chưa có trạng thái"}
+                        </td>
+
+                        <td>
+                          {r.reason ?? "—"}
+                        </td>
+
+                        <td className="hash">
+                          {r.document_id ?? "—"}
+                        </td>
+
+                        <td>
+                          <button
+                            type="button"
+                            className="secondary"
+                            disabled={!r.document_id}
+                            onClick={() =>
+                              setSelectedDocumentId(
+                                r.document_id
+                              )
+                            }
+                          >
+                            Xem chi tiết
+                          </button>
+                        </td>
                       </tr>
                     ))
                   )}
@@ -362,6 +575,75 @@ function App() {
               </table>
             </div>
           </section>
+
+          {selectedDocument && (
+            <section className="card">
+              <div className="section-heading">
+                <h2>Chi tiết tài liệu</h2>
+
+                <button
+                  type="button"
+                  className="secondary"
+                  onClick={() =>
+                    setSelectedDocumentId(null)
+                  }
+                >
+                  Đóng
+                </button>
+              </div>
+
+              <p>
+                <strong>Tên file:</strong>{" "}
+                {selectedDocument.file_name}
+              </p>
+
+              <p>
+                <strong>Document ID:</strong>{" "}
+                {selectedDocument.document_id}
+              </p>
+
+              <p>
+                <strong>Trạng thái tài liệu:</strong>{" "}
+                {LABEL[selectedDocument.status] ??
+                  selectedDocument.status ??
+                  "Chưa có trạng thái"}
+              </p>
+
+              <p>
+                <strong>Kết quả tiếp nhận:</strong>{" "}
+                {selectedDocument.outcome ?? "Chưa có"}
+              </p>
+
+              <p>
+                <strong>Lý do:</strong>{" "}
+                {selectedDocument.reason ?? "Không có"}
+              </p>
+
+              <h3>Trạng thái xử lý nền</h3>
+
+              <p className="note">
+                Backend chưa cung cấp API để lấy trạng
+                thái ProcessingJob cho tài liệu này.
+              </p>
+
+              <h3>Kết quả OCR</h3>
+
+              <p className="note">
+                Chưa có dữ liệu OCR từ API Backend.
+                Nội dung văn bản theo từng trang sẽ
+                được hiển thị tại đây khi API hỗ trợ.
+              </p>
+
+              <h3>Kết quả phân loại</h3>
+
+              <p className="note">
+                Chưa có dữ liệu phân loại từ API Backend.
+                Loại tài liệu, độ tin cậy và lý do
+                phân loại sẽ được hiển thị khi API
+                cung cấp các trường tương ứng.
+              </p>
+            </section>
+          )}
         </>
       )}
 
@@ -372,4 +654,6 @@ function App() {
   );
 }
 
-createRoot(document.getElementById("root")).render(<App />);
+createRoot(
+  document.getElementById("root")
+).render(<App />);
