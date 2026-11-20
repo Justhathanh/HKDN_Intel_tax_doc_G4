@@ -5,15 +5,26 @@ These tables extend the original ingestion schema without replacing its history.
 import uuid
 from datetime import datetime, timezone
 from decimal import Decimal
-
 from sqlalchemy import (
-    Boolean, Date, DateTime, ForeignKey, Index, Integer, JSON, Numeric,
-    String, Text, UniqueConstraint, CheckConstraint
+    Boolean,
+    CheckConstraint,
+    Date,
+    DateTime,
+    ForeignKey,
+    ForeignKeyConstraint,
+    Index,
+    Integer,
+    JSON,
+    Numeric,
+    String,
+    text,
+    Text,
+    UniqueConstraint,
 )
+
 from sqlalchemy.orm import Mapped, mapped_column
 
 from .db import Base
-
 
 def _id() -> str:
     return str(uuid.uuid4())
@@ -40,27 +51,60 @@ class TaxEntity(Base):
 
 
 class DocumentFile(Base):
-    """Metadata for immutable originals and derived working artifacts; bytes live in object storage."""
+    """Metadata for immutable originals and derived working artifacts."""
     __tablename__ = "document_files"
     __table_args__ = (
-        UniqueConstraint("document_id", "file_role", "version_no", name="uq_document_files_role_version"),
-        CheckConstraint("version_no >= 1", name="ck_document_files_version_positive"),
-        CheckConstraint("size_bytes >= 0", name="ck_document_files_size_nonnegative"),
+        UniqueConstraint(
+             "id", "client_id",
+             name="uq_document_files_id_client",
+        ),
+       ForeignKeyConstraint(
+            ["parent_file_id", "client_id"],
+            ["document_files.id", "document_files.client_id"],
+             name="fk_document_files_parent_client",
+       ),
+        UniqueConstraint(
+            "document_id", "file_role", "version_no",
+            name="uq_document_files_role_version"
+        ),
+        CheckConstraint(
+            "version_no >= 1",
+            name="ck_document_files_version_positive"
+        ),
+        CheckConstraint(
+            "size_bytes >= 0",
+            name="ck_document_files_size_nonnegative"
+        ),
+        ForeignKeyConstraint(
+            ["document_id", "client_id"],
+            ["documents.id", "documents.client_id"],
+            name="fk_document_files_document_client"
+        ),
         Index("ix_document_files_document_role", "document_id", "file_role"),
     )
+
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_id)
-    client_id: Mapped[str] = mapped_column(ForeignKey("clients.id"), nullable=False, index=True)
-    document_id: Mapped[str] = mapped_column(ForeignKey("documents.id"), nullable=False, index=True)
-    file_role: Mapped[str] = mapped_column(String(32), nullable=False)  # original|working|preprocessed|page_image|thumbnail
+    client_id: Mapped[str] = mapped_column(
+        ForeignKey("clients.id"), nullable=False, index=True
+    )
+    document_id: Mapped[str] = mapped_column(
+        String(36), nullable=False, index=True
+    )
+    file_role: Mapped[str] = mapped_column(String(32), nullable=False)
     storage_key: Mapped[str] = mapped_column(String(512), nullable=False, unique=True)
     file_name: Mapped[str] = mapped_column(String(255), nullable=False)
     mime_type: Mapped[str] = mapped_column(String(128), nullable=False)
     size_bytes: Mapped[int] = mapped_column(Integer, nullable=False)
     sha256: Mapped[str] = mapped_column(String(64), nullable=False)
     version_no: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
-    parent_file_id: Mapped[str | None] = mapped_column(ForeignKey("document_files.id"))
+    parent_file_id: Mapped[str | None] = mapped_column(
+    String(36),
+    nullable=True,
+)
     created_by: Mapped[str | None] = mapped_column(String(128))
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_now, nullable=False
+    )
     metadata_json: Mapped[dict | None] = mapped_column("metadata", JSON)
 
 
@@ -81,15 +125,32 @@ class ProcessingJobEvent(Base):
 
 class ExtractionRun(Base):
     __tablename__ = "extraction_runs"
-    __table_args__ = (Index("ix_extraction_runs_document_created", "document_id", "created_at"),)
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["document_id", "client_id"],
+            ["documents.id", "documents.client_id"],
+            name="fk_extraction_runs_document_client"
+        ),
+        Index(
+            "ix_extraction_runs_document_started",
+            "document_id", "started_at"
+        ),
+    )
+
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_id)
-    client_id: Mapped[str] = mapped_column(ForeignKey("clients.id"), nullable=False, index=True)
-    document_id: Mapped[str] = mapped_column(ForeignKey("documents.id"), nullable=False, index=True)
-    job_id: Mapped[str | None] = mapped_column(ForeignKey("processing_jobs.id"))
+    client_id: Mapped[str] = mapped_column(
+        ForeignKey("clients.id"), nullable=False, index=True
+    )
+    document_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
+    job_id: Mapped[str | None] = mapped_column(
+        ForeignKey("processing_jobs.id")
+    )
     extractor_name: Mapped[str] = mapped_column(String(64), nullable=False)
     extractor_version: Mapped[str | None] = mapped_column(String(64))
-    status: Mapped[str] = mapped_column(String(24), nullable=False)  # running|succeeded|failed
-    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, nullable=False)
+    status: Mapped[str] = mapped_column(String(24), nullable=False)
+    started_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_now, nullable=False
+    )
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     error_code: Mapped[str | None] = mapped_column(String(64))
     metadata_json: Mapped[dict | None] = mapped_column("metadata", JSON)
@@ -98,13 +159,38 @@ class ExtractionRun(Base):
 class Invoice(Base):
     __tablename__ = "invoices"
     __table_args__ = (
-        UniqueConstraint("client_id", "entity_id", "invoice_key", name="uq_invoices_tenant_entity_key"),
-        CheckConstraint("grand_total IS NULL OR grand_total >= 0", name="ck_invoices_grand_total_nonnegative"),
-        Index("ix_invoices_client_entity_issue_date", "client_id", "entity_id", "issue_date"),
+        UniqueConstraint(
+            "client_id", "entity_id", "invoice_key",
+            name="uq_invoices_tenant_entity_key"
+        ),
+        UniqueConstraint(
+            "id", "client_id",
+            name="uq_invoices_id_client"
+        ),
+        UniqueConstraint(
+            "id", "client_id", "entity_id",
+            name="uq_invoices_id_client_entity"
+        ),
+        ForeignKeyConstraint(
+            ["entity_id", "client_id"],
+            ["tax_entities.id", "tax_entities.client_id"],
+            name="fk_invoices_entity_client"
+        ),
+        CheckConstraint(
+            "grand_total IS NULL OR grand_total >= 0",
+            name="ck_invoices_grand_total_nonnegative"
+        ),
+        Index(
+            "ix_invoices_client_entity_issue_date",
+            "client_id", "entity_id", "issue_date"
+        ),
     )
+
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_id)
-    client_id: Mapped[str] = mapped_column(ForeignKey("clients.id"), nullable=False, index=True)
-    entity_id: Mapped[str] = mapped_column(ForeignKey("tax_entities.id"), nullable=False, index=True)
+    client_id: Mapped[str] = mapped_column(
+        ForeignKey("clients.id"), nullable=False, index=True
+    )
+    entity_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
     invoice_key: Mapped[str] = mapped_column(String(255), nullable=False)
     invoice_number: Mapped[str | None] = mapped_column(String(64))
     invoice_series: Mapped[str | None] = mapped_column(String(64))
@@ -116,8 +202,12 @@ class Invoice(Base):
     tax_total: Mapped[Decimal | None] = mapped_column(Numeric(20, 4))
     grand_total: Mapped[Decimal | None] = mapped_column(Numeric(20, 4))
     status: Mapped[str] = mapped_column(String(24), default="draft", nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, nullable=False)
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, onupdate=_now, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_now, nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_now, onupdate=_now, nullable=False
+    )
 
 
 class InvoiceParty(Base):
@@ -165,14 +255,37 @@ class InvoiceTax(Base):
 
 class InvoiceDocument(Base):
     __tablename__ = "invoice_documents"
-    __table_args__ = (UniqueConstraint("invoice_id", "document_id", name="uq_invoice_documents_link"),)
+    __table_args__ = (
+        UniqueConstraint(
+            "invoice_id", "document_id",
+            name="uq_invoice_documents_link"
+        ),
+        ForeignKeyConstraint(
+            ["invoice_id", "client_id"],
+            ["invoices.id", "invoices.client_id"],
+            name="fk_invoice_documents_invoice_client"
+        ),
+        ForeignKeyConstraint(
+            ["document_id", "client_id"],
+            ["documents.id", "documents.client_id"],
+            name="fk_invoice_documents_document_client"
+        ),
+    )
+
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_id)
-    invoice_id: Mapped[str] = mapped_column(ForeignKey("invoices.id"), nullable=False, index=True)
-    document_id: Mapped[str] = mapped_column(ForeignKey("documents.id"), nullable=False, index=True)
-    relation_type: Mapped[str] = mapped_column(String(24), default="source", nullable=False)
+    client_id: Mapped[str] = mapped_column(
+        ForeignKey("clients.id"), nullable=False, index=True
+    )
+    invoice_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
+    document_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
+    relation_type: Mapped[str] = mapped_column(
+        String(24), default="source", nullable=False
+    )
     is_primary: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     linked_by: Mapped[str | None] = mapped_column(String(128))
-    linked_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, nullable=False)
+    linked_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_now, nullable=False
+    )
 
 
 class ExtractedField(Base):
@@ -216,14 +329,31 @@ class DocumentValidation(Base):
 
 class ReviewCase(Base):
     __tablename__ = "review_cases"
-    __table_args__ = (Index("ix_review_cases_status_created", "status", "created_at"),)
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["document_id", "client_id"],
+            ["documents.id", "documents.client_id"],
+            name="fk_review_cases_document_client"
+        ),
+        ForeignKeyConstraint(
+            ["invoice_id", "client_id"],
+            ["invoices.id", "invoices.client_id"],
+            name="fk_review_cases_invoice_client"
+        ),
+        Index("ix_review_cases_status_created", "status", "created_at"),
+    )
+
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_id)
-    client_id: Mapped[str] = mapped_column(ForeignKey("clients.id"), nullable=False, index=True)
-    document_id: Mapped[str] = mapped_column(ForeignKey("documents.id"), nullable=False, index=True)
-    invoice_id: Mapped[str | None] = mapped_column(ForeignKey("invoices.id"), index=True)
+    client_id: Mapped[str] = mapped_column(
+        ForeignKey("clients.id"), nullable=False, index=True
+    )
+    document_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
+    invoice_id: Mapped[str | None] = mapped_column(String(36), index=True)
     status: Mapped[str] = mapped_column(String(24), default="pending", nullable=False)
     assigned_to: Mapped[str | None] = mapped_column(String(128))
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_now, nullable=False
+    )
     closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
@@ -242,14 +372,31 @@ class ReviewChange(Base):
 
 class ApprovalRecord(Base):
     __tablename__ = "approval_records"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["document_id", "client_id"],
+            ["documents.id", "documents.client_id"],
+            name="fk_approval_records_document_client"
+        ),
+        ForeignKeyConstraint(
+            ["invoice_id", "client_id"],
+            ["invoices.id", "invoices.client_id"],
+            name="fk_approval_records_invoice_client"
+        ),
+    )
+
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_id)
-    client_id: Mapped[str] = mapped_column(ForeignKey("clients.id"), nullable=False, index=True)
-    document_id: Mapped[str] = mapped_column(ForeignKey("documents.id"), nullable=False, index=True)
-    invoice_id: Mapped[str | None] = mapped_column(ForeignKey("invoices.id"), index=True)
-    decision: Mapped[str] = mapped_column(String(16), nullable=False)  # approved|rejected
+    client_id: Mapped[str] = mapped_column(
+        ForeignKey("clients.id"), nullable=False, index=True
+    )
+    document_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
+    invoice_id: Mapped[str | None] = mapped_column(String(36), index=True)
+    decision: Mapped[str] = mapped_column(String(16), nullable=False)
     actor: Mapped[str] = mapped_column(String(128), nullable=False)
     reason: Mapped[str | None] = mapped_column(Text)
-    decided_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, nullable=False)
+    decided_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_now, nullable=False
+    )
 
 
 class AuditLog(Base):
@@ -269,24 +416,60 @@ class AuditLog(Base):
 
 class ExportJob(Base):
     __tablename__ = "export_jobs"
-    __table_args__ = (Index("ix_export_jobs_tenant_status", "client_id", "status"),)
+    __table_args__ = (
+        UniqueConstraint(
+            "id", "client_id", "entity_id",
+            name="uq_export_jobs_id_client_entity"
+        ),
+        ForeignKeyConstraint(
+            ["entity_id", "client_id"],
+            ["tax_entities.id", "tax_entities.client_id"],
+            name="fk_export_jobs_entity_client"
+        ),
+        Index("ix_export_jobs_tenant_status", "client_id", "status"),
+    )
+
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_id)
-    client_id: Mapped[str] = mapped_column(ForeignKey("clients.id"), nullable=False, index=True)
-    entity_id: Mapped[str] = mapped_column(ForeignKey("tax_entities.id"), nullable=False, index=True)
+    client_id: Mapped[str] = mapped_column(
+        ForeignKey("clients.id"), nullable=False, index=True
+    )
+    entity_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
     export_format: Mapped[str] = mapped_column(String(24), nullable=False)
     status: Mapped[str] = mapped_column(String(24), default="queued", nullable=False)
     requested_by: Mapped[str] = mapped_column(String(128), nullable=False)
     storage_key: Mapped[str | None] = mapped_column(String(512))
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_now, nullable=False
+    )
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     error_message: Mapped[str | None] = mapped_column(Text)
 
 
 class ExportItem(Base):
     __tablename__ = "export_items"
-    __table_args__ = (UniqueConstraint("export_job_id", "invoice_id", name="uq_export_items_invoice"),)
+    __table_args__ = (
+        UniqueConstraint(
+            "export_job_id", "invoice_id",
+            name="uq_export_items_invoice"
+        ),
+        ForeignKeyConstraint(
+            ["export_job_id", "client_id", "entity_id"],
+            ["export_jobs.id", "export_jobs.client_id", "export_jobs.entity_id"],
+            name="fk_export_items_job_tenant_entity"
+        ),
+        ForeignKeyConstraint(
+            ["invoice_id", "client_id", "entity_id"],
+            ["invoices.id", "invoices.client_id", "invoices.entity_id"],
+            name="fk_export_items_invoice_tenant_entity"
+        ),
+    )
+
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_id)
-    export_job_id: Mapped[str] = mapped_column(ForeignKey("export_jobs.id"), nullable=False, index=True)
-    invoice_id: Mapped[str] = mapped_column(ForeignKey("invoices.id"), nullable=False, index=True)
+    client_id: Mapped[str] = mapped_column(
+        ForeignKey("clients.id"), nullable=False, index=True
+    )
+    entity_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
+    export_job_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
+    invoice_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
     included: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     reason: Mapped[str | None] = mapped_column(String(128))
