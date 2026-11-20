@@ -1,10 +1,37 @@
 {
-  "version": "1.0.0",
-  "description": "Ground Truth đối soát cho bộ dữ liệu thuế tổng hợp Synthetic Tax Dataset (G4T-42). Toàn bộ dữ liệu là giả lập cho môi trường kiểm thử.",
+  "version": "2.0.0",
+  "description": "Ground Truth đối soát toàn diện cho bộ dữ liệu Synthetic Tax Dataset (G4T-42). Bao gồm XML hóa đơn, PDF điện tử (text-layer), ảnh scan, tài liệu non-tax, tài liệu mờ và XML lỗi. Toàn bộ dữ liệu là giả định phục vụ kiểm thử tự động.",
   "default_client_tax_id": "0312345678",
+  "categories": {
+    "xml_invoices": [
+      "tct_hdon_01_vat10_standard.xml",
+      "tct_hdon_02_vat8_multi_rate.xml",
+      "tct_hdon_03_vat0_export_foreign.xml",
+      "tct_hdon_04_outgoing_branch.xml",
+      "tct_hdon_05_replacement.xml",
+      "tct_hdon_06_wrapped_transmission.xml",
+      "tct_hdon_07_missing_optional.xml"
+    ],
+    "xml_errors": [
+      "malformed_invoice.xml"
+    ],
+    "pdf_digital": [
+      "invoice_digital_text_layer.pdf"
+    ],
+    "non_tax": [
+      "non_tax_contract.pdf"
+    ],
+    "scanned_images": [
+      "invoice_scan_clean.png",
+      "invoice_scan_blurred.png"
+    ]
+  },
   "files": {
     "tct_hdon_01_vat10_standard.xml": {
+      "relative_path": "xml/tct_hdon_01_vat10_standard.xml",
+      "format": "xml",
       "variant": "tct-hdon-v1",
+      "expected_document_type": "INVOICE_VAT",
       "description": "Hóa đơn đầu vào chuẩn VAT 10%, có mã CQT và chữ ký điện tử",
       "client_tax_id": "0312345678",
       "expected_direction": "incoming",
@@ -31,7 +58,10 @@
       }
     },
     "tct_hdon_02_vat8_multi_rate.xml": {
+      "relative_path": "xml/tct_hdon_02_vat8_multi_rate.xml",
+      "format": "xml",
       "variant": "tct-hdon-v1",
+      "expected_document_type": "INVOICE_VAT",
       "description": "Hóa đơn đầu vào đa thuế suất (10% và 8% theo Nghị định 15/2022/NĐ-CP)",
       "client_tax_id": "0312345678",
       "expected_direction": "incoming",
@@ -63,7 +93,10 @@
       }
     },
     "tct_hdon_03_vat0_export_foreign.xml": {
+      "relative_path": "xml/tct_hdon_03_vat0_export_foreign.xml",
+      "format": "xml",
       "variant": "tct-hdon-v1",
+      "expected_document_type": "INVOICE_VAT",
       "description": "Hóa đơn đầu ra dịch vụ xuất khẩu thuế suất 0%, ngoại tệ USD, người mua nước ngoài",
       "client_tax_id": "0312345678",
       "expected_direction": "outgoing",
@@ -87,7 +120,10 @@
       }
     },
     "tct_hdon_04_outgoing_branch.xml": {
+      "relative_path": "xml/tct_hdon_04_outgoing_branch.xml",
+      "format": "xml",
       "variant": "tct-hdon-v1",
+      "expected_document_type": "INVOICE_VAT",
       "description": "Hóa đơn đầu ra chi nhánh có XML namespace và MST dạng 10-3",
       "client_tax_id": "0312345678-001",
       "expected_direction": "outgoing",
@@ -109,7 +145,10 @@
       }
     },
     "tct_hdon_05_replacement.xml": {
+      "relative_path": "xml/tct_hdon_05_replacement.xml",
+      "format": "xml",
       "variant": "tct-hdon-v1",
+      "expected_document_type": "INVOICE_VAT",
       "description": "Hóa đơn thay thế, có thông tin hóa đơn bị thay thế",
       "client_tax_id": "0312345678",
       "expected_direction": "incoming",
@@ -136,7 +175,10 @@
       }
     },
     "tct_hdon_06_wrapped_transmission.xml": {
+      "relative_path": "xml/tct_hdon_06_wrapped_transmission.xml",
+      "format": "xml",
       "variant": "tct-hdon-v1",
+      "expected_document_type": "INVOICE_VAT",
       "description": "Hóa đơn nằm trong thông điệp truyền nhận TDiep/DLieu",
       "client_tax_id": "0312345678",
       "expected_direction": "incoming",
@@ -158,7 +200,10 @@
       }
     },
     "tct_hdon_07_missing_optional.xml": {
+      "relative_path": "xml/tct_hdon_07_missing_optional.xml",
+      "format": "xml",
       "variant": "tct-hdon-v1",
+      "expected_document_type": "INVOICE_VAT",
       "description": "Hóa đơn tối giản thiếu các trường tùy chọn, các trường bắt buộc vẫn hợp lệ",
       "client_tax_id": "0312345678",
       "expected_direction": "incoming",
@@ -177,6 +222,61 @@
         "tax_total": "100000",
         "gross_total": "1100000",
         "direction": "incoming"
+      }
+    },
+    "malformed_invoice.xml": {
+      "relative_path": "xml/malformed_invoice.xml",
+      "format": "xml",
+      "expected_document_type": "CORRUPT_XML",
+      "description": "XML lỗi cú pháp thiếu thẻ đóng dùng để kiểm thử lỗi cú pháp xml_malformed",
+      "schema_passed": false,
+      "expected_error": "xml_malformed"
+    },
+    "invoice_digital_text_layer.pdf": {
+      "relative_path": "pdf/invoice_digital_text_layer.pdf",
+      "format": "pdf",
+      "expected_document_type": "INVOICE_VAT",
+      "description": "Hóa đơn điện tử dạng PDF kỹ thuật số có text layer trích xuất được (cho G4T-62)",
+      "fields": {
+        "invoice_series": "C26TAA",
+        "invoice_number": "00000055",
+        "issue_date": "2026-11-15",
+        "seller_tax_id": "0109876543",
+        "buyer_tax_id": "0312345678",
+        "gross_total": "16500000"
+      }
+    },
+    "non_tax_contract.pdf": {
+      "relative_path": "pdf/non_tax_contract.pdf",
+      "format": "pdf",
+      "expected_document_type": "NON_TAX_CONTRACT",
+      "description": "Hợp đồng nguyên tắc cung cấp dịch vụ - Mẫu tài liệu không phải thuế (Non-Tax) để test phân loại tài liệu (G4T-24)",
+      "fields": {
+        "contract_number": "45/2026/HDNT-TECH",
+        "title": "HOP DONG NGUYEN TAC CUNG CAP DICH VU"
+      }
+    },
+    "invoice_scan_clean.png": {
+      "relative_path": "images/invoice_scan_clean.png",
+      "format": "image_png",
+      "expected_document_type": "INVOICE_VAT",
+      "description": "Ảnh scan hóa đơn GTGT rõ nét phục vụ OCR (cho G4T-23)",
+      "fields": {
+        "invoice_number": "00000088",
+        "invoice_series": "C26TCC",
+        "seller_tax_id": "0109876543",
+        "buyer_tax_id": "0312345678",
+        "gross_total": "8800000"
+      }
+    },
+    "invoice_scan_blurred.png": {
+      "relative_path": "images/invoice_scan_blurred.png",
+      "format": "image_png",
+      "expected_document_type": "INVOICE_VAT",
+      "description": "Ảnh scan hóa đơn bị làm mờ (blurred) để kiểm thử độ chống chịu của OCR (tài liệu mờ/khó đọc)",
+      "fields": {
+        "invoice_number": "00000088",
+        "invoice_series": "C26TCC"
       }
     }
   }
