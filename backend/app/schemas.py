@@ -113,3 +113,17 @@ class JobList(BaseModel):
     document_id: str
     latest: JobOut | None
     items: list[JobOut]
+
+
+class RetryPolicyOut(BaseModel):
+    default_max_attempts: int
+    backoff_base_seconds: int
+    backoff_max_seconds: int
+    default_lease_seconds: int
+    retryable_errors: list[str]
+    non_retryable_errors: list[str]
+
+
+class DeadLetterListOut(BaseModel):
+    total: int
+    items: list[JobOut]
