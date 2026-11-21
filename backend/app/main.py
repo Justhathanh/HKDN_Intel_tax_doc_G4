@@ -306,8 +306,9 @@ def get_job(job_id: str, db: Session = Depends(get_db), user: User = Depends(cur
     response_model=JobOut,
     responses={
         200: {"model": JobOut, "description": "Job đang chờ hoặc đang chạy"},
+        **_errors(401, 404),
         409: {"model": ErrorBody, "description": "Job không ở trạng thái có thể thử lại"},
-        **_errors(401, 404, 422),
+        **_errors(422),
     },
 )
 def retry_job(job_id: str, db: Session = Depends(get_db), user: User = Depends(current_user)):
