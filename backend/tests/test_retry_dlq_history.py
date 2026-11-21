@@ -2,12 +2,9 @@
 import uuid
 from datetime import datetime, timedelta, timezone
 
-import pytest
-
 from app import jobs
 from app.db import SessionLocal
 from app.jobs import JobStatus
-from app.models import Document
 
 XML = b'<?xml version="1.0" encoding="UTF-8"?><HSoThueDTu><maTKhai>01/GTGT</maTKhai></HSoThueDTu>'
 
@@ -47,8 +44,8 @@ def test_execution_history_records_attempts_duration_and_safe_errors(api):
         jobs.claim_next(db, "worker-1", now=t0)
         j2 = jobs.fail(db, j1, "ocr_timeout", now=t0 + timedelta(milliseconds=1250))
         assert j2 is not None
-        jobs.claim_next(db, "worker-2", now=t0 + timedelta(seconds=31))
-        jobs.succeed(db, j2, "xml-mapper-v1", now=t0 + timedelta(seconds=31, milliseconds=420))
+        jobs.claim_next(db, "worker-2", now=t0 + timedelta(seconds=32))
+        jobs.succeed(db, j2, "xml-mapper-v1", now=t0 + timedelta(seconds=32, milliseconds=420))
         db.commit()
 
     hist_res = api.get(f"/documents/{doc_id}/jobs", headers=head)
@@ -79,7 +76,7 @@ def test_execution_history_records_attempts_duration_and_safe_errors(api):
 
 
 def test_dead_letter_queue_and_idempotent_manual_retry(api):
-    cid_a, doc_a, head_a = _seed_doc(api, tax_id="0100000001")
+    _, doc_a, head_a = _seed_doc(api, tax_id="0100000001")
     _, doc_b, head_b = _seed_doc(api, tax_id="0100000002")
 
     with SessionLocal() as db:
