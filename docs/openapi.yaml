@@ -937,8 +937,8 @@ components:
       - duration_ms
       - error
       title: JobOut
-      description: Trạng thái một lần thử xử lý (G4T-68). Không trả locked_by, lease,
-        input_sha256: đó là dữ liệu nội bộ.
+      description: 'Trạng thái một lần thử xử lý (G4T-68). Không trả locked_by, lease,
+        input_sha256: đó là dữ liệu nội bộ.'
     Manifest:
       properties:
         batch_id:
