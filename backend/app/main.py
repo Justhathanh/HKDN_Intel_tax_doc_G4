@@ -24,7 +24,8 @@ from .schemas import (
     DocumentOut,
     DocumentReceipt,
     ErrorBody,
-    JobHistoryOut,
+    JobErrorOut,
+    JobList,
     JobOut,
     Manifest,
     RetryPolicyOut,
@@ -40,7 +41,7 @@ store = LocalWriteOnceStore()
 # Mô tả viết tường minh để đặc tả không đổi theo phiên bản Python
 _ERROR_DESCRIPTIONS = {
     400: "Yêu cầu không hợp lệ", 401: "Chưa xác thực", 404: "Không tìm thấy hoặc không có quyền",
-    409: "Xung đột trạng thái hoặc Idempotency-Key", 413: "File quá lớn", 415: "Định dạng không được hỗ trợ",
+    409: "Idempotency-Key đã dùng cho file khác", 413: "File quá lớn", 415: "Định dạng không được hỗ trợ",
     422: "File không xử lý được",
 }
 
@@ -80,30 +81,6 @@ def _receipt(sub: Submission, doc: Document, duplicate: bool, status_code: int) 
         channel=sub.channel, uploaded_by=sub.actor, status=doc.status, duplicate=duplicate,
         received_at=_iso(sub.received_at))
     return JSONResponse(status_code=status_code, content=body.model_dump())
-
-
-def _job_out(job: ProcessingJob) -> JobOut:
-    return JobOut(
-        job_id=job.id,
-        client_id=job.client_id,
-        document_id=job.document_id,
-        job_type=job.job_type,
-        status=job.status,
-        attempt_no=job.attempt_no,
-        max_attempts=job.max_attempts,
-        retry_of_job_id=job.retry_of_job_id,
-        correlation_id=job.correlation_id,
-        input_sha256=job.input_sha256,
-        processor_version=job.processor_version,
-        created_at=_iso(job.created_at),
-        next_attempt_at=_iso(job.next_attempt_at),
-        started_at=_iso(job.started_at) if job.started_at else None,
-        finished_at=_iso(job.finished_at) if job.finished_at else None,
-        duration_ms=jobs.duration_ms(job),
-        error_code=job.error_code,
-        error_message=job.error_message,
-        error_retryable=job.error_retryable,
-    )
 
 
 def _read_limited(file: UploadFile) -> bytes | None:
@@ -258,25 +235,45 @@ def get_document(document_id: str, db: Session = Depends(get_db), user: User = D
                        uploaded_by=doc.uploaded_by, received_at=_iso(doc.received_at))
 
 
-@app.get("/documents/{document_id}/jobs", response_model=JobHistoryOut, responses=_errors(401, 404))
-def get_document_jobs(
-    document_id: str,
-    job_type: str | None = None,
-    db: Session = Depends(get_db),
-    user: User = Depends(current_user),
-):
-    doc = db.get(Document, document_id)
-    if doc is None:
-        raise ApiError("not_found")
-    require_scope(user, doc.client_id)
-    items = jobs.list_document_jobs(db, doc.id, job_type=job_type)
-    current_status = items[-1].status if items else None
-    return JobHistoryOut(
-        document_id=doc.id,
-        total_attempts=len(items),
-        current_status=current_status,
-        items=[_job_out(j) for j in items],
-    )
+@app.get("/batches/{batch_id}/manifest", response_model=Manifest, responses=_errors(401, 404))
+def manifest(batch_id: str, db: Session = Depends(get_db), user: User = Depends(current_user)):
+    batch = _batch_or_404(db, user, batch_id)
+    rows = db.execute(select(Submission, Document.status).outerjoin(Document, Submission.document_id == Document.id)
+                      .where(Submission.batch_id == batch.id).order_by(Submission.received_at)).all()
+    counts = dict(db.execute(select(Submission.outcome, func.count()).where(
+        Submission.batch_id == batch.id).group_by(Submission.outcome)).all())
+    return Manifest(batch_id=batch.id, submissions=len(rows), by_outcome=counts, items=[{
+        "submission_id": s.id, "file_name": s.file_name, "size": s.size, "sha256": s.sha256, "outcome": s.outcome,
+        "reason": s.reason, "document_id": s.document_id, "status": status, "uploaded_by": s.actor,
+        "received_at": _iso(s.received_at)} for s, status in rows])
+
+
+def _iso_or_none(value: datetime | None) -> str | None:
+    return _iso(value) if value is not None else None
+
+
+def _duration_ms(job: ProcessingJob) -> int | None:
+    """Thời lượng một lần thử, tính từ started_at đến finished_at (dùng cho lịch sử chạy, G4T-76)."""
+    if job.started_at is None or job.finished_at is None:
+        return None
+    started = job.started_at if job.started_at.tzinfo else job.started_at.replace(tzinfo=timezone.utc)
+    finished = job.finished_at if job.finished_at.tzinfo else job.finished_at.replace(tzinfo=timezone.utc)
+    return max(0, int((finished - started).total_seconds() * 1000))
+
+
+def _job_out(job: ProcessingJob) -> JobOut:
+    status = jobs.JobStatus(job.status)
+    error = None
+    if job.error_code:
+        error = JobErrorOut(code=job.error_code, message=job.error_message or "", retryable=bool(job.error_retryable))
+    return JobOut(
+        job_id=job.id, document_id=job.document_id, job_type=job.job_type, status=status,
+        display_status=jobs.DISPLAY_STATUS[status], will_retry=status == jobs.JobStatus.FAILED,
+        attempt_no=job.attempt_no, max_attempts=job.max_attempts, retry_of_job_id=job.retry_of_job_id,
+        correlation_id=job.correlation_id, processor_version=job.processor_version,
+        created_at=_iso(job.created_at), next_attempt_at=_iso(job.next_attempt_at),
+        started_at=_iso_or_none(job.started_at), finished_at=_iso_or_none(job.finished_at),
+        duration_ms=_duration_ms(job), error=error)
 
 
 @app.get("/jobs/dead-letter", response_model=DeadLetterListOut, responses=_errors(401))
@@ -295,6 +292,7 @@ def list_dead_letter(
 
 @app.get("/jobs/{job_id}", response_model=JobOut, responses=_errors(401, 404))
 def get_job(job_id: str, db: Session = Depends(get_db), user: User = Depends(current_user)):
+    """Trạng thái một lần thử xử lý. Job của khách hàng khác trả 404 như không tồn tại."""
     job = db.get(ProcessingJob, job_id)
     if job is None:
         raise ApiError("not_found")
@@ -306,9 +304,14 @@ def get_job(job_id: str, db: Session = Depends(get_db), user: User = Depends(cur
     "/jobs/{job_id}/retry",
     status_code=201,
     response_model=JobOut,
-    responses={200: {"model": JobOut, "description": "Job đang chờ hoặc đang chạy"}, **_errors(401, 404, 409, 422)},
+    responses={
+        200: {"model": JobOut, "description": "Job đang chờ hoặc đang chạy"},
+        409: {"model": ErrorBody, "description": "Job không ở trạng thái có thể thử lại"},
+        **_errors(401, 404, 422),
+    },
 )
 def retry_job(job_id: str, db: Session = Depends(get_db), user: User = Depends(current_user)):
+    # TODO (SEC 01): Bổ sung kiểm tra phân quyền vai trò (chỉ accountant_lead / admin được retry thủ công) theo G4T-68 mục 9.
     job = db.get(ProcessingJob, job_id)
     if job is None:
         raise ApiError("not_found")
@@ -330,14 +333,16 @@ def retry_job(job_id: str, db: Session = Depends(get_db), user: User = Depends(c
     return JSONResponse(status_code=201 if created else 200, content=_job_out(retried).model_dump())
 
 
-@app.get("/batches/{batch_id}/manifest", response_model=Manifest, responses=_errors(401, 404))
-def manifest(batch_id: str, db: Session = Depends(get_db), user: User = Depends(current_user)):
-    batch = _batch_or_404(db, user, batch_id)
-    rows = db.execute(select(Submission, Document.status).outerjoin(Document, Submission.document_id == Document.id)
-                      .where(Submission.batch_id == batch.id).order_by(Submission.received_at)).all()
-    counts = dict(db.execute(select(Submission.outcome, func.count()).where(
-        Submission.batch_id == batch.id).group_by(Submission.outcome)).all())
-    return Manifest(batch_id=batch.id, submissions=len(rows), by_outcome=counts, items=[{
-        "submission_id": s.id, "file_name": s.file_name, "size": s.size, "sha256": s.sha256, "outcome": s.outcome,
-        "reason": s.reason, "document_id": s.document_id, "status": status, "uploaded_by": s.actor,
-        "received_at": _iso(s.received_at)} for s, status in rows])
+@app.get("/documents/{document_id}/jobs", response_model=JobList, responses=_errors(401, 404))
+def list_document_jobs(document_id: str, job_type: str = "extract", db: Session = Depends(get_db),
+                       user: User = Depends(current_user)):
+    """Lịch sử các lần thử của một tài liệu, cũ trước mới sau; latest là lần thử mới nhất."""
+    doc = db.get(Document, document_id)
+    if doc is None:
+        raise ApiError("not_found")
+    require_scope(user, doc.client_id)
+    rows = db.scalars(select(ProcessingJob).where(
+        ProcessingJob.document_id == doc.id, ProcessingJob.job_type == job_type)
+        .order_by(ProcessingJob.attempt_no)).all()
+    items = [_job_out(job) for job in rows]
+    return JobList(document_id=doc.id, latest=items[-1] if items else None, items=items)
