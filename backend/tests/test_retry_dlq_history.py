@@ -5,6 +5,7 @@ from datetime import datetime, timedelta, timezone
 from app import jobs
 from app.db import SessionLocal
 from app.jobs import JobStatus
+from app.models import Document
 
 XML = b'<?xml version="1.0" encoding="UTF-8"?><HSoThueDTu><maTKhai>01/GTGT</maTKhai></HSoThueDTu>'
 
@@ -52,23 +53,28 @@ def test_execution_history_records_attempts_duration_and_safe_errors(api):
     assert hist_res.status_code == 200
     hist = hist_res.json()
     assert hist["document_id"] == doc_id
-    assert hist["total_attempts"] == 2
-    assert hist["current_status"] == JobStatus.SUCCEEDED
+    assert len(hist["items"]) == 2
+    assert hist["latest"]["job_id"] == hist["items"][1]["job_id"]
+    assert hist["latest"]["status"] == JobStatus.SUCCEEDED
 
     first, second = hist["items"]
     assert first["attempt_no"] == 1
     assert first["status"] == JobStatus.FAILED
+    assert first["will_retry"] is True
     assert first["duration_ms"] == 1250
-    assert first["error_code"] == "ocr_timeout"
-    assert first["error_retryable"] is True
-    assert first["error_message"] == jobs.SAFE_ERRORS["ocr_timeout"][1]
+    assert first["error"] == {
+        "code": "ocr_timeout",
+        "message": jobs.SAFE_ERRORS["ocr_timeout"][1],
+        "retryable": True,
+    }
 
     assert second["attempt_no"] == 2
     assert second["retry_of_job_id"] == first["job_id"]
     assert second["correlation_id"] == first["correlation_id"]
     assert second["status"] == JobStatus.SUCCEEDED
+    assert second["will_retry"] is False
     assert second["duration_ms"] == 420
-    assert second["error_code"] is None
+    assert second["error"] is None
 
     single_res = api.get(f"/jobs/{second['job_id']}", headers=head)
     assert single_res.status_code == 200
@@ -95,7 +101,10 @@ def test_dead_letter_queue_and_idempotent_manual_retry(api):
     assert dlq_a.status_code == 200
     assert dlq_a.json()["total"] == 1
     assert dlq_a.json()["items"][0]["job_id"] == ja_id
-    assert dlq_a.json()["items"][0]["error_code"] == "parser_error"
+    assert dlq_a.json()["items"][0]["status"] == JobStatus.DEAD_LETTER
+    assert dlq_a.json()["items"][0]["will_retry"] is False
+    assert dlq_a.json()["items"][0]["error"]["code"] == "parser_error"
+    assert dlq_a.json()["items"][0]["error"]["retryable"] is False
 
     # Tenant A không thể xem hoặc retry job của Tenant B (404)
     assert api.get(f"/jobs/{jb_id}", headers=head_a).status_code == 404
@@ -134,3 +143,29 @@ def test_retry_rejects_non_dead_letter_job(api):
     res = api.post(f"/jobs/{job_id}/retry", headers=head)
     assert res.status_code == 409
     assert res.json()["error_code"] == "job_not_retryable"
+
+
+def test_enqueue_after_exhausting_max_attempts_expands_attempt_range(api):
+    _, doc_id, _ = _seed_doc(api, tax_id="0100000099")
+    t0 = datetime(2026, 11, 20, 12, 0, 0, tzinfo=timezone.utc)
+
+    with SessionLocal() as db:
+        j1 = jobs.active_job(db, doc_id, "extract")
+        j1.next_attempt_at = t0
+        jobs.claim_next(db, "worker-1", now=t0)
+        j2 = jobs.fail(db, j1, "ocr_timeout", now=t0 + timedelta(seconds=1))
+        assert j2 is not None
+
+        jobs.claim_next(db, "worker-1", now=t0 + timedelta(seconds=40))
+        j3 = jobs.fail(db, j2, "ocr_timeout", now=t0 + timedelta(seconds=41))
+        assert j3 is not None
+
+        jobs.claim_next(db, "worker-1", now=t0 + timedelta(seconds=120))
+        assert jobs.fail(db, j3, "ocr_timeout", now=t0 + timedelta(seconds=121)) is None
+
+        doc = db.get(Document, doc_id)
+        j4 = jobs.enqueue(db, doc)
+        db.commit()
+        assert j4.attempt_no == 4
+        assert j4.max_attempts == 4
+        assert j4.status == JobStatus.QUEUED
