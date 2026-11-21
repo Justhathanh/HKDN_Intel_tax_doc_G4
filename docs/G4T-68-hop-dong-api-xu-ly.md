@@ -72,6 +72,9 @@ Request và các lỗi giữ nguyên như `docs/G4T-10-thiet-ke-api-upload.md`. 
 |---|---|---|
 | `job_id` | `string \| null` | File mới hợp lệ: id của job `queued` vừa tạo. Gửi trùng (200): job mới nhất của tài liệu đã có. File bị cách ly/từ chối: không có job, trả lỗi như hiện tại. |
 
+> **Tình trạng (21/11):** PR #20 (G4T-71) đã tự tạo job `queued` sau mỗi upload hợp lệ, nhưng phản hồi upload
+> **chưa có `job_id`**. Trong lúc chờ, Frontend lấy job qua `GET /documents/{document_id}/jobs` (mục 4.3).
+
 Upload phải trả về ngay sau khi lưu bản gốc và tạo job; không chờ worker. Cấu trúc phản hồi hiện tại (chưa có `job_id`;
 giá trị trong `<…>` là mô tả kiểu, không phải dữ liệu):
 
@@ -114,6 +117,7 @@ Trạng thái một lần thử. Mã: 200, 401, 404. Giá trị trong `<…>` l�
   "next_attempt_at": "<ISO 8601 UTC>",
   "started_at": null,
   "finished_at": null,
+  "duration_ms": null,
   "error": null
 }
 ```
@@ -124,6 +128,7 @@ Trạng thái một lần thử. Mã: 200, 401, 404. Giá trị trong `<…>` l�
 | `display_status` | 4 trạng thái cho giao diện theo G4T-39: `QUEUED`, `RUNNING`, `SUCCEEDED`, `FAILED` (`dead_letter` hiện là `FAILED`) |
 | `will_retry` | `true` khi lần thử này lỗi nhưng đã có lần thử mới xếp hàng; `false` ở mọi trường hợp khác |
 | `next_attempt_at` | Lần thử này được phép chạy từ lúc nào (lần thử lại có thời gian chờ) |
+| `duration_ms` | Thời lượng lần thử (từ `started_at` đến `finished_at`), `null` khi chưa chạy xong; dùng cho lịch sử chạy G4T-76 |
 | `error` | `null` hoặc `{code, message, retryable}`; `message` lấy từ danh sách cố định, an toàn để hiển thị |
 
 ### 4.3 `GET /documents/{document_id}/jobs?job_type=extract` (đã cài)

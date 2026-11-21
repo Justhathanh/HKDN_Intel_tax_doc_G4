@@ -17,7 +17,7 @@ from app.models import Document, StateEvent
 from app.states import IllegalTransition, State, check_transition
 from app.storage import LocalWriteOnceStore, OriginalExists
 
-XML = b'<?xml version="1.0" encoding="UTF-8"?><HDon><SHDon>0000123</SHDon></HDon>'
+XML = b'<?xml version="1.0" encoding="UTF-8"?><kiem-tra/>'  # XML an toàn trung tính, không phải hóa đơn
 
 
 def pdf(pages=1, password=None, js=False):
@@ -39,7 +39,7 @@ def image(fmt):
     return buf.getvalue()
 
 
-def setup(api, name="KH A", tax_id="0312345678"):
+def setup(api, name="KH A", tax_id="KH-1"):
     head = {"X-User": "u1"}
     cid = api.post("/clients", json={"name": name, "tax_id": tax_id}, headers=head).json()["id"]
     head["X-Client-Ids"] = cid
@@ -113,7 +113,7 @@ def test_receipt_fields(api):
     ("a.pdf", lambda: pdf(1, password="x"), 422, "password_protected"),
     ("a.pdf", lambda: b"%PDF-1.4 broken", 422, "corrupt_file"),
     ("a.png", lambda: b"\x89PNG\r\n\x1a\nbroken", 422, "corrupt_file"),
-    ("a.xml", lambda: b"<HDon><broken>", 422, "corrupt_file"),
+    ("a.xml", lambda: b"<kiem-tra><broken>", 422, "corrupt_file"),
 ])
 def test_rejected_returns_error_and_stays_visible(api, name, make, status, code):
     bid, head = setup(api)
@@ -225,7 +225,7 @@ def test_corrupted_store_is_not_silently_accepted(api):
 # Cách ly khách hàng
 def test_same_file_in_other_client_is_separate(api):
     bid, head = setup(api)
-    bid2, head2 = setup(api, "KH B", "0109876543")
+    bid2, head2 = setup(api, "KH B", "KH-2")
     a = send(api, bid, head, "a.xml", XML, "k1")
     b = send(api, bid2, head2, "a.xml", XML, "k1")
     assert (a.status_code, b.status_code) == (201, 201)
@@ -235,7 +235,7 @@ def test_same_file_in_other_client_is_separate(api):
 def test_cross_client_is_hidden(api):
     bid, head = setup(api)
     doc = send(api, bid, head, "a.xml", XML).json()["document_id"]
-    _, other = setup(api, "KH B", "0109876543")
+    _, other = setup(api, "KH B", "KH-2")
     assert send(api, bid, other, "b.xml", XML).status_code == 404
     assert api.get(f"/documents/{doc}", headers=other).status_code == 404
     assert api.get(f"/batches/{bid}/manifest", headers=other).status_code == 404
@@ -256,6 +256,34 @@ def test_mime_comes_from_content_not_client(api):
     r = api.post(f"/batches/{bid}/documents", files={"file": ("a.xml", XML, "application/pdf")},
                  headers={**head, "Idempotency-Key": "k"})
     assert r.json()["mime_type"] == "application/xml"
+
+
+def test_upload_rejects_pdf_claimed_as_png_by_filename_and_mime(api):
+    bid, headers = setup(api)
+    response = api.post(
+        f"/batches/{bid}/documents",
+        files={"file": ("a.png", pdf(), "image/png")},
+        headers={**headers, "Idempotency-Key": "g4t-17-pdf-as-png"},
+    )
+
+    assert response.status_code == 415, response.text
+    assert response.json()["error_code"] == "extension_content_mismatch"
+
+    item = manifest(api, bid, headers)["items"][0]
+    assert item["status"] == "quarantined"
+    assert item["reason"] == "extension_content_mismatch"
+
+
+def test_upload_accepts_pdf_with_incorrect_declared_mime(api):
+    bid, headers = setup(api)
+    response = api.post(
+        f"/batches/{bid}/documents",
+        files={"file": ("a.pdf", pdf(), "image/png")},
+        headers={**headers, "Idempotency-Key": "g4t-17-pdf-wrong-mime"},
+    )
+
+    assert response.status_code == 201, response.text
+    assert response.json()["mime_type"] == "application/pdf"
 
 
 def test_originals_cannot_be_overwritten(tmp_path):

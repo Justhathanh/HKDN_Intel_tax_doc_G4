@@ -728,6 +728,11 @@ components:
           - type: string
           - type: 'null'
           title: Finished At
+        duration_ms:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Duration Ms
         error:
           anyOf:
           - $ref: '#/components/schemas/JobErrorOut'
@@ -749,6 +754,7 @@ components:
       - next_attempt_at
       - started_at
       - finished_at
+      - duration_ms
       - error
       title: JobOut
       description: 'Trạng thái một lần thử xử lý (G4T-68). Không trả locked_by, lease,
