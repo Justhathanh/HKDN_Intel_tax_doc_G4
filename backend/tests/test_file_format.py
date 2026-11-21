@@ -8,7 +8,7 @@ from pypdf import PdfWriter
 
 from app import safety
 
-XML = '<?xml version="1.0" encoding="UTF-8"?><HDon><SHDon>0000123</SHDon></HDon>'.encode()
+XML = '<?xml version="1.0" encoding="UTF-8"?><kiem-tra/>'.encode()  # XML an toàn trung tính, không phải hóa đơn
 
 
 def pdf():
@@ -27,7 +27,7 @@ def image(fmt):
 
 def setup(api):
     head = {"X-User": "u1"}
-    cid = api.post("/clients", json={"name": "KH A", "tax_id": "0312345678"}, headers=head).json()["id"]
+    cid = api.post("/clients", json={"name": "KH", "tax_id": "KH-1"}, headers=head).json()["id"]
     head["X-Client-Ids"] = cid
     bid = api.post("/batches", json={"client_id": cid, "engagement_id": "E1"}, headers=head).json()["id"]
     return bid, head
@@ -57,9 +57,9 @@ def test_supported_format_accepted(name, make, kind):
 
 @pytest.mark.parametrize("data", [
     b"\xef\xbb\xbf" + XML,
-    b"  \r\n" + b"<HDon></HDon>",
-    '<?xml version="1.0" encoding="UTF-16"?><HDon>Hóa đơn</HDon>'.encode("utf-16"),
-    "\ufeff<HDon>Hóa đơn</HDon>".encode("utf-16-be"),
+    b"  \r\n" + b"<kiem-tra></kiem-tra>",
+    '<?xml version="1.0" encoding="UTF-16"?><kiem-tra>chữ có dấu</kiem-tra>'.encode("utf-16"),
+    "\ufeff<kiem-tra>chữ có dấu</kiem-tra>".encode("utf-16-be"),
 ], ids=["utf8-bom", "khoang-trang-dau", "utf16-le", "utf16-be"])
 def test_xml_encodings_accepted(data):
     verdict = safety.inspect("a.xml", data)

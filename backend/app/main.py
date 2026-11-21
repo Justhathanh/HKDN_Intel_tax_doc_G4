@@ -10,11 +10,11 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from . import safety
+from . import jobs, safety
 from .auth import User, current_user, require_scope
 from .db import get_db
 from .errors import ApiError, api_error_handler
-from .models import Batch, Client, Document, StateEvent, Submission
+from .models import Batch, Client, Document, ProcessingJob, StateEvent, Submission
 from .domain_models import TaxEntity
 from .schemas import (
     BatchIn,
@@ -24,13 +24,15 @@ from .schemas import (
     DocumentOut,
     DocumentReceipt,
     ErrorBody,
+    JobErrorOut,
+    JobList,
+    JobOut,
     Manifest,
     TaxEntityIn,
     TaxEntityOut,
 )
 from .states import State
 from .storage import LocalWriteOnceStore, OriginalExists
-
 app = FastAPI(title="THTax Intelligent Tax Document Ingestion", version="0.2.0")
 app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:5173"], allow_methods=["*"], allow_headers=["*"])
 app.add_exception_handler(ApiError, api_error_handler)
@@ -149,6 +151,8 @@ def _accept(db: Session, batch: Batch, user: User, key: str, name: str, data: by
     sub.document_id = doc.id
     if verdict.quarantine:
         sub.outcome, sub.reason = "quarantined", verdict.reason
+    else:
+        jobs.enqueue(db, doc)
     db.add(sub)
     db.commit()
     if verdict.quarantine:
@@ -268,3 +272,56 @@ def manifest(batch_id: str, db: Session = Depends(get_db), user: User = Depends(
         "submission_id": s.id, "file_name": s.file_name, "size": s.size, "sha256": s.sha256, "outcome": s.outcome,
         "reason": s.reason, "document_id": s.document_id, "status": status, "uploaded_by": s.actor,
         "received_at": _iso(s.received_at)} for s, status in rows])
+
+
+def _iso_or_none(value: datetime | None) -> str | None:
+    return _iso(value) if value is not None else None
+
+
+def _duration_ms(job: ProcessingJob) -> int | None:
+    """Thời lượng một lần thử, tính từ started_at đến finished_at (dùng cho lịch sử chạy, G4T-76)."""
+    if job.started_at is None or job.finished_at is None:
+        return None
+    started = job.started_at if job.started_at.tzinfo else job.started_at.replace(tzinfo=timezone.utc)
+    finished = job.finished_at if job.finished_at.tzinfo else job.finished_at.replace(tzinfo=timezone.utc)
+    return max(0, int((finished - started).total_seconds() * 1000))
+
+
+def _job_out(job: ProcessingJob) -> JobOut:
+    status = jobs.JobStatus(job.status)
+    error = None
+    if job.error_code:
+        error = JobErrorOut(code=job.error_code, message=job.error_message or "", retryable=bool(job.error_retryable))
+    return JobOut(
+        job_id=job.id, document_id=job.document_id, job_type=job.job_type, status=status,
+        display_status=jobs.DISPLAY_STATUS[status], will_retry=status == jobs.JobStatus.FAILED,
+        attempt_no=job.attempt_no, max_attempts=job.max_attempts, retry_of_job_id=job.retry_of_job_id,
+        correlation_id=job.correlation_id, processor_version=job.processor_version,
+        created_at=_iso(job.created_at), next_attempt_at=_iso(job.next_attempt_at),
+        started_at=_iso_or_none(job.started_at), finished_at=_iso_or_none(job.finished_at),
+        duration_ms=_duration_ms(job), error=error)
+
+
+@app.get("/jobs/{job_id}", response_model=JobOut, responses=_errors(401, 404))
+def get_job(job_id: str, db: Session = Depends(get_db), user: User = Depends(current_user)):
+    """Trạng thái một lần thử xử lý. Job của khách hàng khác trả 404 như không tồn tại."""
+    job = db.get(ProcessingJob, job_id)
+    if job is None:
+        raise ApiError("not_found")
+    require_scope(user, job.client_id)
+    return _job_out(job)
+
+
+@app.get("/documents/{document_id}/jobs", response_model=JobList, responses=_errors(401, 404))
+def list_document_jobs(document_id: str, job_type: str = "extract", db: Session = Depends(get_db),
+                       user: User = Depends(current_user)):
+    """Lịch sử các lần thử của một tài liệu, cũ trước mới sau; latest là lần thử mới nhất."""
+    doc = db.get(Document, document_id)
+    if doc is None:
+        raise ApiError("not_found")
+    require_scope(user, doc.client_id)
+    rows = db.scalars(select(ProcessingJob).where(
+        ProcessingJob.document_id == doc.id, ProcessingJob.job_type == job_type)
+        .order_by(ProcessingJob.attempt_no)).all()
+    items = [_job_out(job) for job in rows]
+    return JobList(document_id=doc.id, latest=items[-1] if items else None, items=items)

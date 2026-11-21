@@ -6,7 +6,7 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 
 import pytest
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.exc import IntegrityError
 
 from app import jobs, main
@@ -27,7 +27,11 @@ def upload(api, data=XML, name="a.xml", tax_id="KH-1"):
     bid = api.post("/batches", json={"client_id": cid, "engagement_id": "E1"}, headers=head).json()["id"]
     r = api.post(f"/batches/{bid}/documents", files={"file": (name, data)},
                  headers={**head, "Idempotency-Key": str(uuid.uuid4())})
-    return r.json()["document_id"]
+    doc_id = r.json()["document_id"]
+    with SessionLocal() as db:
+        db.execute(delete(ProcessingJob).where(ProcessingJob.document_id == doc_id))
+        db.commit()
+    return doc_id
 
 
 def aware(value):

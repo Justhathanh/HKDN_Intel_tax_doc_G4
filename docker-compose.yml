@@ -6,6 +6,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-dev_only_change_me}
       POSTGRES_DB: thtax
     volumes: [dbdata:/var/lib/postgresql/data]
+
   api:
     build: ./backend
     environment:
@@ -14,6 +15,19 @@ services:
     volumes: [originals:/data/originals]
     ports: ["8000:8000"]
     depends_on: [db]
+
+  worker:
+    build: ./backend
+    command: ["python", "-m", "app.worker"]
+    environment:
+      DATABASE_URL: postgresql+psycopg://thtax:${POSTGRES_PASSWORD:-dev_only_change_me}@db/thtax
+      ORIGINALS_DIR: /data/originals
+      QUEUE_POLL_INTERVAL: "1.0"
+    volumes:
+      - originals:/data/originals:ro
+    depends_on: [db, api]
+    restart: unless-stopped
+
 volumes:
   dbdata:
   originals:
