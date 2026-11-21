@@ -10,8 +10,7 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from . import jobs as job_lifecycle
-from . import safety
+from . import jobs, safety
 from .auth import User, current_user, require_scope
 from .db import get_db
 from .errors import ApiError, api_error_handler
@@ -139,6 +138,8 @@ def _accept(db: Session, batch: Batch, user: User, key: str, name: str, data: by
     sub.document_id = doc.id
     if verdict.quarantine:
         sub.outcome, sub.reason = "quarantined", verdict.reason
+    else:
+        jobs.enqueue(db, doc)
     db.add(sub)
     db.commit()
     if verdict.quarantine:
@@ -233,18 +234,28 @@ def _iso_or_none(value: datetime | None) -> str | None:
     return _iso(value) if value is not None else None
 
 
+def _duration_ms(job: ProcessingJob) -> int | None:
+    """Thời lượng một lần thử, tính từ started_at đến finished_at (dùng cho lịch sử chạy, G4T-76)."""
+    if job.started_at is None or job.finished_at is None:
+        return None
+    started = job.started_at if job.started_at.tzinfo else job.started_at.replace(tzinfo=timezone.utc)
+    finished = job.finished_at if job.finished_at.tzinfo else job.finished_at.replace(tzinfo=timezone.utc)
+    return max(0, int((finished - started).total_seconds() * 1000))
+
+
 def _job_out(job: ProcessingJob) -> JobOut:
-    status = job_lifecycle.JobStatus(job.status)
+    status = jobs.JobStatus(job.status)
     error = None
     if job.error_code:
         error = JobErrorOut(code=job.error_code, message=job.error_message or "", retryable=bool(job.error_retryable))
     return JobOut(
         job_id=job.id, document_id=job.document_id, job_type=job.job_type, status=status,
-        display_status=job_lifecycle.DISPLAY_STATUS[status], will_retry=status == job_lifecycle.JobStatus.FAILED,
+        display_status=jobs.DISPLAY_STATUS[status], will_retry=status == jobs.JobStatus.FAILED,
         attempt_no=job.attempt_no, max_attempts=job.max_attempts, retry_of_job_id=job.retry_of_job_id,
         correlation_id=job.correlation_id, processor_version=job.processor_version,
         created_at=_iso(job.created_at), next_attempt_at=_iso(job.next_attempt_at),
-        started_at=_iso_or_none(job.started_at), finished_at=_iso_or_none(job.finished_at), error=error)
+        started_at=_iso_or_none(job.started_at), finished_at=_iso_or_none(job.finished_at),
+        duration_ms=_duration_ms(job), error=error)
 
 
 @app.get("/jobs/{job_id}", response_model=JobOut, responses=_errors(401, 404))

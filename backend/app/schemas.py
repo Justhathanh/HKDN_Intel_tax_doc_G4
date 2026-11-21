@@ -105,6 +105,7 @@ class JobOut(BaseModel):
     next_attempt_at: str
     started_at: str | None
     finished_at: str | None
+    duration_ms: int | None
     error: JobErrorOut | None
 
 

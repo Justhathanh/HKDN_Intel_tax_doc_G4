@@ -2,26 +2,34 @@
 import uuid
 from datetime import datetime, timedelta, timezone
 
+from sqlalchemy import delete
+
 from app import jobs
 from app.db import SessionLocal
-from app.models import Document
+from app.models import Document, ProcessingJob
 
 XML = b'<?xml version="1.0" encoding="UTF-8"?><kiem-tra/>'  # file an toàn trung tính, không phải hóa đơn
 # Mốc thời gian tương đối: luôn ở sau lúc job được tạo (next_attempt_at = giờ thật).
 T0 = datetime.now(timezone.utc).replace(microsecond=0) + timedelta(days=1)
 JOB_KEYS = {"job_id", "document_id", "job_type", "status", "display_status", "will_retry", "attempt_no",
             "max_attempts", "retry_of_job_id", "correlation_id", "processor_version", "created_at",
-            "next_attempt_at", "started_at", "finished_at", "error"}
+            "next_attempt_at", "started_at", "finished_at", "duration_ms", "error"}
 
 
-def setup_doc(api, tax_id="KH-1"):
+def setup_doc(api, tax_id="KH-1", keep_auto_job=False):
     head = {"X-User": "u1"}
     cid = api.post("/clients", json={"name": "KH", "tax_id": tax_id}, headers=head).json()["id"]
     head["X-Client-Ids"] = cid
     bid = api.post("/batches", json={"client_id": cid, "engagement_id": "E1"}, headers=head).json()["id"]
     r = api.post(f"/batches/{bid}/documents", files={"file": ("a.xml", XML)},
                  headers={**head, "Idempotency-Key": str(uuid.uuid4())})
-    return r.json()["document_id"], head
+    doc_id = r.json()["document_id"]
+    if not keep_auto_job:
+        # Từ G4T-71, upload tự tạo job; các test bên dưới tự tạo job để kiểm soát correlation_id và số lần thử.
+        with SessionLocal() as db:
+            db.execute(delete(ProcessingJob).where(ProcessingJob.document_id == doc_id))
+            db.commit()
+    return doc_id, head
 
 
 def enqueue(doc_id, **kw):
@@ -84,6 +92,7 @@ def test_succeeded_job(api):
     assert (body["status"], body["display_status"], body["processor_version"]) == (
         "succeeded", "SUCCEEDED", "xml-parser 0.1")
     assert body["started_at"] and body["finished_at"] and body["error"] is None
+    assert body["duration_ms"] == 3000
 
 
 def test_document_without_jobs(api):
@@ -119,3 +128,12 @@ def test_requires_login(api):
 def test_display_status_covers_every_state():
     assert set(jobs.DISPLAY_STATUS) == set(jobs.JobStatus)
     assert set(jobs.DISPLAY_STATUS.values()) == {"QUEUED", "RUNNING", "SUCCEEDED", "FAILED"}
+
+
+def test_upload_creates_job_visible_through_api(api):
+    """Nối với G4T-71: upload xong là có job queued, frontend thấy ngay qua GET /documents/{id}/jobs."""
+    doc_id, head = setup_doc(api, keep_auto_job=True)
+    body = api.get(f"/documents/{doc_id}/jobs", headers=head).json()
+    assert len(body["items"]) == 1
+    assert (body["latest"]["status"], body["latest"]["display_status"], body["latest"]["attempt_no"]) == (
+        "queued", "QUEUED", 1)
