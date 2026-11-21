@@ -79,6 +79,42 @@ class Manifest(BaseModel):
     items: list[ManifestItem]
 
 
+class JobErrorOut(BaseModel):
+    """Lỗi của một lần thử; chỉ gồm mã và câu thông báo trong danh sách cho phép (SEC 04)."""
+
+    code: str
+    message: str
+    retryable: bool
+
+
+class JobOut(BaseModel):
+    """Trạng thái một lần thử xử lý (G4T-68). Không trả locked_by, lease, input_sha256: đó là dữ liệu nội bộ."""
+
+    job_id: str
+    document_id: str
+    job_type: str
+    status: str
+    display_status: str
+    will_retry: bool
+    attempt_no: int
+    max_attempts: int
+    retry_of_job_id: str | None
+    correlation_id: str
+    processor_version: str | None
+    created_at: str
+    next_attempt_at: str
+    started_at: str | None
+    finished_at: str | None
+    duration_ms: int | None
+    error: JobErrorOut | None
+
+
+class JobList(BaseModel):
+    document_id: str
+    latest: JobOut | None
+    items: list[JobOut]
+
+
 class RetryPolicyOut(BaseModel):
     default_max_attempts: int
     backoff_base_seconds: int
@@ -86,35 +122,6 @@ class RetryPolicyOut(BaseModel):
     default_lease_seconds: int
     retryable_errors: list[str]
     non_retryable_errors: list[str]
-
-
-class JobOut(BaseModel):
-    job_id: str
-    client_id: str
-    document_id: str
-    job_type: str
-    status: str
-    attempt_no: int
-    max_attempts: int
-    retry_of_job_id: str | None
-    correlation_id: str
-    input_sha256: str
-    processor_version: str | None
-    created_at: str
-    next_attempt_at: str
-    started_at: str | None
-    finished_at: str | None
-    duration_ms: int | None
-    error_code: str | None
-    error_message: str | None
-    error_retryable: bool | None
-
-
-class JobHistoryOut(BaseModel):
-    document_id: str
-    total_attempts: int
-    current_status: str | None
-    items: list[JobOut]
 
 
 class DeadLetterListOut(BaseModel):
