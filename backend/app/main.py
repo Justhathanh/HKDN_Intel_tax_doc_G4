@@ -10,7 +10,7 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from . import safety
+from . import jobs, safety
 from .auth import User, current_user, require_scope
 from .db import get_db
 from .errors import ApiError, api_error_handler
@@ -137,6 +137,8 @@ def _accept(db: Session, batch: Batch, user: User, key: str, name: str, data: by
     sub.document_id = doc.id
     if verdict.quarantine:
         sub.outcome, sub.reason = "quarantined", verdict.reason
+    else:
+        jobs.enqueue(db, doc)
     db.add(sub)
     db.commit()
     if verdict.quarantine:
