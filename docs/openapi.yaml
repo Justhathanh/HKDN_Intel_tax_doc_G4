@@ -16,6 +16,45 @@ paths:
                 additionalProperties: true
                 type: object
                 title: Response Health Health Get
+  /retry-policy:
+    get:
+      summary: Get Retry Policy
+      operationId: get_retry_policy_retry_policy_get
+      parameters:
+      - name: x-user
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: X-User
+      - name: x-client-ids
+        in: header
+        required: false
+        schema:
+          type: string
+          default: ''
+          title: X-Client-Ids
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RetryPolicyOut'
+        '401':
+          description: Chưa xác thực
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
   /clients:
     post:
       summary: Create Client
@@ -185,7 +224,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorBody'
         '409':
-          description: Idempotency-Key đã dùng cho file khác
+          description: Xung đột trạng thái hoặc Idempotency-Key
           content:
             application/json:
               schema:
@@ -259,6 +298,242 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+  /documents/{document_id}/jobs:
+    get:
+      summary: Get Document Jobs
+      operationId: get_document_jobs_documents__document_id__jobs_get
+      parameters:
+      - name: document_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Document Id
+      - name: job_type
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Job Type
+      - name: x-user
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: X-User
+      - name: x-client-ids
+        in: header
+        required: false
+        schema:
+          type: string
+          default: ''
+          title: X-Client-Ids
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobHistoryOut'
+        '401':
+          description: Chưa xác thực
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '404':
+          description: Không tìm thấy hoặc không có quyền
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /jobs/dead-letter:
+    get:
+      summary: List Dead Letter
+      operationId: list_dead_letter_jobs_dead_letter_get
+      parameters:
+      - name: unresolved_only
+        in: query
+        required: false
+        schema:
+          type: boolean
+          default: true
+          title: Unresolved Only
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 200
+          minimum: 1
+          default: 50
+          title: Limit
+      - name: offset
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 0
+          default: 0
+          title: Offset
+      - name: x-user
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: X-User
+      - name: x-client-ids
+        in: header
+        required: false
+        schema:
+          type: string
+          default: ''
+          title: X-Client-Ids
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeadLetterListOut'
+        '401':
+          description: Chưa xác thực
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /jobs/{job_id}:
+    get:
+      summary: Get Job
+      operationId: get_job_jobs__job_id__get
+      parameters:
+      - name: job_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Job Id
+      - name: x-user
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: X-User
+      - name: x-client-ids
+        in: header
+        required: false
+        schema:
+          type: string
+          default: ''
+          title: X-Client-Ids
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobOut'
+        '401':
+          description: Chưa xác thực
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '404':
+          description: Không tìm thấy hoặc không có quyền
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /jobs/{job_id}/retry:
+    post:
+      summary: Retry Job
+      operationId: retry_job_jobs__job_id__retry_post
+      parameters:
+      - name: job_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Job Id
+      - name: x-user
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: X-User
+      - name: x-client-ids
+        in: header
+        required: false
+        schema:
+          type: string
+          default: ''
+          title: X-Client-Ids
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobOut'
+        '200':
+          description: Job đang chờ hoặc đang chạy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobOut'
+        '401':
+          description: Chưa xác thực
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '404':
+          description: Không tìm thấy hoặc không có quyền
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '409':
+          description: Xung đột trạng thái hoặc Idempotency-Key
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '422':
+          description: File không xử lý được
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
   /batches/{batch_id}/manifest:
     get:
       summary: Manifest
@@ -383,6 +658,21 @@ components:
       - name
       - tax_id
       title: ClientOut
+    DeadLetterListOut:
+      properties:
+        total:
+          type: integer
+          title: Total
+        items:
+          items:
+            $ref: '#/components/schemas/JobOut'
+          type: array
+          title: Items
+      type: object
+      required:
+      - total
+      - items
+      title: DeadLetterListOut
     DocumentOut:
       properties:
         document_id:
@@ -521,6 +811,128 @@ components:
           title: Detail
       type: object
       title: HTTPValidationError
+    JobHistoryOut:
+      properties:
+        document_id:
+          type: string
+          title: Document Id
+        total_attempts:
+          type: integer
+          title: Total Attempts
+        current_status:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Current Status
+        items:
+          items:
+            $ref: '#/components/schemas/JobOut'
+          type: array
+          title: Items
+      type: object
+      required:
+      - document_id
+      - total_attempts
+      - current_status
+      - items
+      title: JobHistoryOut
+    JobOut:
+      properties:
+        job_id:
+          type: string
+          title: Job Id
+        client_id:
+          type: string
+          title: Client Id
+        document_id:
+          type: string
+          title: Document Id
+        job_type:
+          type: string
+          title: Job Type
+        status:
+          type: string
+          title: Status
+        attempt_no:
+          type: integer
+          title: Attempt No
+        max_attempts:
+          type: integer
+          title: Max Attempts
+        retry_of_job_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Retry Of Job Id
+        correlation_id:
+          type: string
+          title: Correlation Id
+        input_sha256:
+          type: string
+          title: Input Sha256
+        processor_version:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Processor Version
+        created_at:
+          type: string
+          title: Created At
+        next_attempt_at:
+          type: string
+          title: Next Attempt At
+        started_at:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Started At
+        finished_at:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Finished At
+        duration_ms:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Duration Ms
+        error_code:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Error Code
+        error_message:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Error Message
+        error_retryable:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: Error Retryable
+      type: object
+      required:
+      - job_id
+      - client_id
+      - document_id
+      - job_type
+      - status
+      - attempt_no
+      - max_attempts
+      - retry_of_job_id
+      - correlation_id
+      - input_sha256
+      - processor_version
+      - created_at
+      - next_attempt_at
+      - started_at
+      - finished_at
+      - duration_ms
+      - error_code
+      - error_message
+      - error_retryable
+      title: JobOut
     Manifest:
       properties:
         batch_id:
@@ -599,6 +1011,39 @@ components:
       - uploaded_by
       - received_at
       title: ManifestItem
+    RetryPolicyOut:
+      properties:
+        default_max_attempts:
+          type: integer
+          title: Default Max Attempts
+        backoff_base_seconds:
+          type: integer
+          title: Backoff Base Seconds
+        backoff_max_seconds:
+          type: integer
+          title: Backoff Max Seconds
+        default_lease_seconds:
+          type: integer
+          title: Default Lease Seconds
+        retryable_errors:
+          items:
+            type: string
+          type: array
+          title: Retryable Errors
+        non_retryable_errors:
+          items:
+            type: string
+          type: array
+          title: Non Retryable Errors
+      type: object
+      required:
+      - default_max_attempts
+      - backoff_base_seconds
+      - backoff_max_seconds
+      - default_lease_seconds
+      - retryable_errors
+      - non_retryable_errors
+      title: RetryPolicyOut
     ValidationError:
       properties:
         loc:
