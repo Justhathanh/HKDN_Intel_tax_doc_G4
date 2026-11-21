@@ -1,6 +1,7 @@
 from alembic import context
 
 from app import models  # noqa: F401
+from app import domain_models  # noqa: F401
 from app.db import Base, engine
 
 with engine.connect() as connection:
