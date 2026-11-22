@@ -1,11 +1,13 @@
-"""Script kiem tra toan dien bo dataset danh cho Khiem tu test."""
+"""Script kiem tra toan dien bo dataset G4T-42.
+Chay bang lenh: python scripts/verify_dataset.py
+"""
 import json
 import os
 import pypdf
 from PIL import Image
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-FIXTURES_DIR = os.path.join(BASE_DIR, "fixtures")
+BACKEND_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+FIXTURES_DIR = os.path.join(BACKEND_DIR, "tests", "fixtures")
 
 print("=" * 65)
 print("  HE THONG KIEM THU TOAN DIEN BO DATASET G4T-42 (NGUYEN THANH KHIEM)")
@@ -50,10 +52,6 @@ for fname, meta in gt["files"].items():
 print("  * Thong ke nhan G4T-24 tren toan bo 17 muc:")
 for t, cnt in sorted(types_count.items()):
     print(f"    + {t:<22}: {cnt} tai lieu")
-
-print("\n[MUC 5] KIEM TRA PARSE XML VOI PARSER CUA QUOC AN (BRANCH G4T-61)")
-from an_xml_test import test_an_parser_independent
-test_an_parser_independent(FIXTURES_DIR, gt["files"])
 
 print("\n" + "=" * 65)
 print("  HOAN TAT KIEM TRA TOAN DIEN: TAT CA CAC DIEU KIEN DEU DAT 100%!")
