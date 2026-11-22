@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<HDon>
+    <DLHDon>
+        <TTChung>
+            <PBan>2.0.0</PBan>
+            <THDon>Hóa đơn giá trị gia tăng</THDon>
+            <KHMSHDon>1</KHMSHDon>
+            <KHHDon>1C26TDN</KHHDon>
+            <SHDon>0000888</SHDon>
+            <NLap>2026-06-10</NLap>
+            <DVTTe>VND</DVTTe>
+            <TGia>1</TGia>
+        </TTChung>
+        <NDHDon>
+            <NBan>
+                <Ten>CHI NHÁNH CÔNG TY VIỄN THÔNG GIẢ LẬP SAO MAI</Ten>
+                <MST>0105667788-002</MST>
+                <DChi>Số 88 Đại Lộ Thử Nghiệm 3, Phường Giả Định 3, Quận Kịch Bản, TP. Đà Nẵng</DChi>
+            </NBan>
+            <NMua>
+                <Ten>CÔNG TY TNHH KHÁCH SẠN MẪU THỬ BIỂN ĐÔNG</Ten>
+                <MST>0402113355</MST>
+                <DChi>Số 12 Đường Ven Biển Giả Định, Quận Thử Nghiệm, TP. Đà Nẵng</DChi>
+            </NMua>
+            <TToan>
+                <TgTCThue>18000000</TgTCThue>
+                <TgTThue>1800000</TgTThue>
+                <TgTTTBSo>19800000</TgTTTBSo>
+                <TgTTTBChu>Mười chín triệu tám trăm nghìn đồng</TgTTTBChu>
+                <THTTLTSuat>
+                    <LTSuat>
+                        <TSuat>10%</TSuat>
+                        <ThTien>18000000</ThTien>
+                        <TThue>1800000</TThue>
+                    </LTSuat>
+                </THTTLTSuat>
+            </TToan>
+        </NDHDon>
+    </DLHDon>
+    <MCCQT>TCT010566778800220261C26TDN0000888</MCCQT>
+</HDon>

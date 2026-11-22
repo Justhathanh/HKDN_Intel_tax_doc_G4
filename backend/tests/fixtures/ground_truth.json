@@ -1,0 +1,361 @@
+{
+  "version": "3.1.0",
+  "description": "Ground Truth đối soát toàn diện cho bộ dữ liệu Synthetic Tax Dataset (G4T-42). Tuân thủ nguyên tắc dữ liệu giả lập 100% không MST/địa chỉ thật, có watermark, chuẩn hóa nhãn theo G4T-24.",
+  "legal_basis": "RFP 2026 - Nghị định 254/2026/NĐ-CP & Thông tư 91/2026/TT-BTC",
+  "classification_standard": "G4T-24 (INVOICE, TAX_NOTICE, TAX_PAYMENT_RECEIPT, UNKNOWN, MIXED)",
+  "default_client_tax_id": "0108877665",
+  "files": {
+    "tct_hdon_01_vat10_standard.xml": {
+      "relative_path": "xml/tct_hdon_01_vat10_standard.xml",
+      "format": "xml",
+      "variant": "tct-hdon-v1",
+      "expected_document_type": "INVOICE",
+      "description": "Hóa đơn GTGT 10% tiêu chuẩn, độc lập với dữ liệu dev",
+      "client_tax_id": "0108877665",
+      "expected_direction": "incoming",
+      "schema_passed": true,
+      "fields": {
+        "invoice_form": "1",
+        "invoice_series": "1C26TNN",
+        "invoice_number": "0000045",
+        "issue_date": "2026-03-15",
+        "currency": "VND",
+        "exchange_rate": "1",
+        "seller_name": "CÔNG TY CỔ PHẦN CÔNG NGHỆ GIẢ LẬP BẢO AN",
+        "seller_tax_id": "0109988776",
+        "seller_address": "Số 123 Đường Giả Định Alpha, Phường Thử Nghiệm 1, Quận Kịch Bản, TP. Hà Nội",
+        "buyer_name": "CÔNG TY TNHH PHẦN MỀM MẪU THỬ THĂNG LONG",
+        "buyer_tax_id": "0108877665",
+        "buyer_address": "Số 45 Phố Kịch Bản Thử Nghiệm, Phường Giả Định, Quận Khảo Sát, TP. Hà Nội",
+        "net_total": "45000000",
+        "tax_total": "4500000",
+        "gross_total": "49500000",
+        "gross_total_in_words": "Bốn mươi chín triệu năm trăm nghìn đồng",
+        "tax_authority_code": "TCT010998877620261C26TNN0000045",
+        "direction": "incoming",
+        "tax_breakdown[1].rate": "10%",
+        "tax_breakdown[1].net_amount": "45000000",
+        "tax_breakdown[1].tax_amount": "4500000"
+      }
+    },
+    "tct_hdon_02_vat8_multi_rate.xml": {
+      "relative_path": "xml/tct_hdon_02_vat8_multi_rate.xml",
+      "format": "xml",
+      "variant": "tct-hdon-v1",
+      "expected_document_type": "INVOICE",
+      "description": "Hóa đơn đa thuế suất (8% và 10%) kết hợp",
+      "client_tax_id": "0317665544",
+      "expected_direction": "incoming",
+      "schema_passed": true,
+      "fields": {
+        "invoice_form": "1",
+        "invoice_series": "1C26MHK",
+        "invoice_number": "0001289",
+        "issue_date": "2026-04-20",
+        "currency": "VND",
+        "exchange_rate": "1",
+        "seller_name": "TẬP ĐOÀN CÔNG NGHIỆP THỬ NGHIỆM NAM PHÁT",
+        "seller_tax_id": "0318991122",
+        "seller_address": "Số 456 Đại Lộ Kịch Bản Beta, Phường Thử Nghiệm 2, Quận Giả Lập, TP. Hồ Chí Minh",
+        "buyer_name": "CÔNG TY CỔ PHẦN XÂY DỰNG MẪU THỬ KHANG ĐIỀN",
+        "buyer_tax_id": "0317665544",
+        "buyer_address": "Số 78 Đường Thử Nghiệm Tân Tạo, Phường Giả Lập 2, Quận Khảo Sát, TP. Hồ Chí Minh",
+        "net_total": "50000000",
+        "tax_total": "4400000",
+        "gross_total": "54400000",
+        "gross_total_in_words": "Năm mươi tư triệu bốn trăm nghìn đồng",
+        "tax_authority_code": "TCT031899112220261C26MHK0001289",
+        "direction": "incoming",
+        "tax_breakdown[1].rate": "8%",
+        "tax_breakdown[1].net_amount": "30000000",
+        "tax_breakdown[1].tax_amount": "2400000",
+        "tax_breakdown[2].rate": "10%",
+        "tax_breakdown[2].net_amount": "20000000",
+        "tax_breakdown[2].tax_amount": "2000000"
+      }
+    },
+    "tct_hdon_03_vat0_export_foreign.xml": {
+      "relative_path": "xml/tct_hdon_03_vat0_export_foreign.xml",
+      "format": "xml",
+      "variant": "tct-hdon-v1",
+      "expected_document_type": "INVOICE",
+      "description": "Hóa đơn đầu ra xuất khẩu VAT 0%, ngoại tệ USD",
+      "client_tax_id": "0401882233",
+      "expected_direction": "outgoing",
+      "schema_passed": true,
+      "fields": {
+        "invoice_form": "1",
+        "invoice_series": "1C26TDA",
+        "invoice_number": "0000305",
+        "issue_date": "2026-05-18",
+        "currency": "USD",
+        "exchange_rate": "25450.00",
+        "seller_name": "CÔNG TY TNHH XUẤT NHẬP KHẨU THỬ NGHIỆM ĐẠI TÂY DƯƠNG",
+        "seller_tax_id": "0401882233",
+        "seller_address": "Số 789 Đường Cảng Thử Nghiệm Gamma, Phường Giả Định 3, Quận Kịch Bản, TP. Đà Nẵng",
+        "buyer_name": "SYNTHETIC GLOBAL LOGISTICS PTE. LTD.",
+        "buyer_address": "Tòa nhà Giả Lập Alpha, Số 99 Đường Thử Nghiệm, Khu Tài Chính Giả Định, Singapore 999999",
+        "net_total": "12500.00",
+        "tax_total": "0.00",
+        "gross_total": "12500.00",
+        "gross_total_in_words": "Twelve thousand five hundred US Dollars",
+        "tax_authority_code": "TCT040188223320261C26TDA0000305",
+        "direction": "outgoing",
+        "tax_breakdown[1].rate": "0%",
+        "tax_breakdown[1].net_amount": "12500.00",
+        "tax_breakdown[1].tax_amount": "0.00"
+      }
+    },
+    "tct_hdon_04_outgoing_branch.xml": {
+      "relative_path": "xml/tct_hdon_04_outgoing_branch.xml",
+      "format": "xml",
+      "variant": "tct-hdon-v1",
+      "expected_document_type": "INVOICE",
+      "description": "Hóa đơn do Chi nhánh phụ thuộc phát hành (MST 10-3)",
+      "client_tax_id": "0105667788-002",
+      "expected_direction": "outgoing",
+      "schema_passed": true,
+      "fields": {
+        "invoice_form": "1",
+        "invoice_series": "1C26TDN",
+        "invoice_number": "0000888",
+        "issue_date": "2026-06-10",
+        "currency": "VND",
+        "exchange_rate": "1",
+        "seller_name": "CHI NHÁNH CÔNG TY VIỄN THÔNG GIẢ LẬP SAO MAI",
+        "seller_tax_id": "0105667788-002",
+        "seller_address": "Số 88 Đại Lộ Thử Nghiệm 3, Phường Giả Định 3, Quận Kịch Bản, TP. Đà Nẵng",
+        "buyer_name": "CÔNG TY TNHH KHÁCH SẠN MẪU THỬ BIỂN ĐÔNG",
+        "buyer_tax_id": "0402113355",
+        "buyer_address": "Số 12 Đường Ven Biển Giả Định, Quận Thử Nghiệm, TP. Đà Nẵng",
+        "net_total": "18000000",
+        "tax_total": "1800000",
+        "gross_total": "19800000",
+        "gross_total_in_words": "Mười chín triệu tám trăm nghìn đồng",
+        "tax_authority_code": "TCT010566778800220261C26TDN0000888",
+        "direction": "outgoing",
+        "tax_breakdown[1].rate": "10%",
+        "tax_breakdown[1].net_amount": "18000000",
+        "tax_breakdown[1].tax_amount": "1800000"
+      }
+    },
+    "tct_hdon_05_replacement.xml": {
+      "relative_path": "xml/tct_hdon_05_replacement.xml",
+      "format": "xml",
+      "variant": "tct-hdon-v1",
+      "expected_document_type": "INVOICE",
+      "description": "Hóa đơn điện tử thay thế cho hóa đơn sai sót có TTHDLQuan",
+      "client_tax_id": "0201889900",
+      "expected_direction": "incoming",
+      "schema_passed": true,
+      "fields": {
+        "invoice_form": "1",
+        "invoice_series": "1C26THG",
+        "invoice_number": "0002560",
+        "issue_date": "2026-07-25",
+        "currency": "VND",
+        "exchange_rate": "1",
+        "seller_name": "CÔNG TY TNHH PHẦN MỀM THỬ NGHIỆM HOÀNG GIA",
+        "seller_tax_id": "0201993344",
+        "seller_address": "Số 101 Phố Thử Nghiệm Delta, Phường Giả Định 4, Quận Kịch Bản, TP. Hải Phòng",
+        "buyer_name": "CÔNG TY CỔ PHẦN LOGISTICS MẪU THỬ HẢI PHÒNG",
+        "buyer_tax_id": "0201889900",
+        "buyer_address": "Số 15 Đường Cảng Giả Định, Quận Thử Nghiệm, TP. Hải Phòng",
+        "net_total": "35000000",
+        "tax_total": "3500000",
+        "gross_total": "38500000",
+        "gross_total_in_words": "Ba mươi tám triệu năm trăm nghìn đồng",
+        "direction": "incoming",
+        "related_invoice_nature": "1",
+        "related_invoice_form": "1",
+        "related_invoice_series": "1C26THG",
+        "related_invoice_number": "0002100",
+        "related_invoice_date": "2026-07-10",
+        "tax_authority_code": "TCT020199334420261C26THG0002560",
+        "tax_breakdown[1].rate": "10%",
+        "tax_breakdown[1].net_amount": "35000000",
+        "tax_breakdown[1].tax_amount": "3500000"
+      }
+    },
+    "tct_hdon_06_wrapped_transmission.xml": {
+      "relative_path": "xml/tct_hdon_06_wrapped_transmission.xml",
+      "format": "xml",
+      "variant": "tct-hdon-v1",
+      "expected_document_type": "INVOICE",
+      "description": "Hóa đơn lồng trong gói thông điệp truyền nhận TDiep/DLieu",
+      "client_tax_id": "0106554433",
+      "expected_direction": "incoming",
+      "schema_passed": true,
+      "fields": {
+        "invoice_form": "1",
+        "invoice_series": "1C26TBV",
+        "invoice_number": "0000789",
+        "issue_date": "2026-08-15",
+        "currency": "VND",
+        "exchange_rate": "1",
+        "seller_name": "CÔNG TY CP THIẾT BỊ Y TẾ GIẢ LẬP BÁCH VIỆT",
+        "seller_tax_id": "0107778899",
+        "seller_address": "Số 202 Đường Giả Lập Epsilon, Phường Thử Nghiệm 5, Quận Kịch Bản, TP. Hà Nội",
+        "buyer_name": "BỆNH VIỆN ĐA KHOA MẪU THỬ BẠCH MAI",
+        "buyer_tax_id": "0106554433",
+        "buyer_address": "Số 100 Phố Thử Nghiệm Đồng Tâm, Quận Giả Định, TP. Hà Nội",
+        "net_total": "60000000",
+        "tax_total": "3000000",
+        "gross_total": "63000000",
+        "gross_total_in_words": "Sáu mươi ba triệu đồng",
+        "direction": "incoming",
+        "tax_authority_code": "TCT010777889920261C26TBV0000789",
+        "tax_breakdown[1].rate": "5%",
+        "tax_breakdown[1].net_amount": "60000000",
+        "tax_breakdown[1].tax_amount": "3000000"
+      }
+    },
+    "tct_hdon_07_missing_optional.xml": {
+      "relative_path": "xml/tct_hdon_07_missing_optional.xml",
+      "format": "xml",
+      "variant": "tct-hdon-v1",
+      "expected_document_type": "INVOICE",
+      "description": "Hóa đơn tối giản thiếu các trường tùy chọn",
+      "client_tax_id": "1801665544",
+      "expected_direction": "outgoing",
+      "schema_passed": true,
+      "fields": {
+        "invoice_form": "2",
+        "invoice_series": "2C26TMT",
+        "invoice_number": "0000150",
+        "issue_date": "2026-09-02",
+        "currency": "VND",
+        "seller_name": "HỘ KINH DOANH NÔNG SẢN THỬ NGHIỆM MIỀN TÂY",
+        "seller_tax_id": "1801665544",
+        "buyer_name": "NGUYỄN VĂN AN (KHÁCH HÀNG GIẢ ĐỊNH)",
+        "gross_total": "8500000",
+        "direction": "outgoing"
+      }
+    },
+    "malformed_invoice.xml": {
+      "relative_path": "xml/malformed_invoice.xml",
+      "format": "xml",
+      "expected_document_type": "INVOICE",
+      "description": "XML lỗi cú pháp thiếu thẻ đóng để kiểm thử lỗi xml_malformed",
+      "schema_passed": false,
+      "expected_error": "xml_malformed"
+    },
+    "invoice_digital_text_layer.pdf": {
+      "relative_path": "pdf/invoice_digital_text_layer.pdf",
+      "format": "pdf",
+      "expected_document_type": "INVOICE",
+      "description": "Hóa đơn điện tử PDF có text layer trích xuất trực tiếp (cho G4T-62)",
+      "fields": {
+        "invoice_series": "1C26TAA",
+        "invoice_number": "00000088",
+        "issue_date": "2026-04-12",
+        "seller_tax_id": "0108998877",
+        "buyer_tax_id": "0317654321",
+        "gross_total": "55000000"
+      }
+    },
+    "invoice_scanned_no_text.pdf": {
+      "relative_path": "pdf/invoice_scanned_no_text.pdf",
+      "format": "pdf",
+      "expected_document_type": "INVOICE",
+      "description": "PDF scan chỉ chứa ảnh raster không có text layer (cho G4T-62 và G4T-23)",
+      "fields": {
+        "invoice_series": "1C26TDA",
+        "invoice_number": "0000305",
+        "seller_tax_id": "0401882233",
+        "gross_total": "22000000"
+      }
+    },
+    "non_tax_contract.pdf": {
+      "relative_path": "pdf/non_tax_contract.pdf",
+      "format": "pdf",
+      "expected_document_type": "UNKNOWN",
+      "description": "Hợp đồng kinh tế dịch vụ tư vấn doanh nghiệp - Tài liệu phi thuế cho G4T-24",
+      "fields": {
+        "contract_number": "45/2026/HĐKT-GIẢ LẬP",
+        "title": "HỢP ĐỒNG KINH TẾ DỊCH VỤ (MẪU THỬ)"
+      }
+    },
+    "tax_notice_cqt.pdf": {
+      "relative_path": "pdf/tax_notice_cqt.pdf",
+      "format": "pdf",
+      "expected_document_type": "TAX_NOTICE",
+      "description": "Thông báo nộp tiền thuế của Chi cục Thuế Khu Vực Giả Định Alpha theo chuẩn G4T-24",
+      "fields": {
+        "notice_number": "14285/TB-CCT-GIẢ LẬP",
+        "taxpayer_name": "CÔNG TY CỔ PHẦN CÔNG NGHỆ GIẢ LẬP BẢO AN",
+        "taxpayer_mst": "0109988776",
+        "total_tax_due": "16500000"
+      }
+    },
+    "tax_payment_receipt_nsnn.pdf": {
+      "relative_path": "pdf/tax_payment_receipt_nsnn.pdf",
+      "format": "pdf",
+      "expected_document_type": "TAX_PAYMENT_RECEIPT",
+      "description": "Giấy nộp tiền vào Ngân sách Nhà nước Mẫu C1-02/NS theo chuẩn G4T-24",
+      "fields": {
+        "receipt_number": "GNT-2026-GIẢ LẬP-01",
+        "taxpayer_mst": "0109988776",
+        "treasury": "Kho bạc Nhà nước Giả Định Alpha",
+        "amount_paid": "4500000"
+      }
+    },
+    "mixed_documents_multi_page.pdf": {
+      "relative_path": "pdf/mixed_documents_multi_page.pdf",
+      "format": "pdf",
+      "expected_document_type": "MIXED",
+      "description": "1 file PDF đa trang chứa nhiều loại chứng từ (Trang 1 HĐ, Trang 2 Thông báo thuế, Trang 3 Giấy nộp tiền) theo chuẩn nhãn MIXED của G4T-24",
+      "total_pages": 3,
+      "contained_types": [
+        "INVOICE",
+        "TAX_NOTICE",
+        "TAX_PAYMENT_RECEIPT"
+      ]
+    },
+    "invoice_scan_clean.png": {
+      "relative_path": "images/invoice_scan_clean.png",
+      "format": "image_png",
+      "expected_document_type": "INVOICE",
+      "description": "Ảnh PNG scan hóa đơn rõ nét phục vụ OCR (cho G4T-23)",
+      "fields": {
+        "invoice_number": "0000305",
+        "invoice_series": "1C26TDA",
+        "seller_tax_id": "0401882233",
+        "gross_total": "22000000"
+      }
+    },
+    "invoice_scan_blurred.png": {
+      "relative_path": "images/invoice_scan_blurred.png",
+      "format": "image_png",
+      "expected_document_type": "INVOICE",
+      "quality": "blurred",
+      "expected_field_status": "needs_review",
+      "description": "Ảnh scan hóa đơn bị làm mờ để test độ bền OCR; kỳ vọng kết quả là needs_review",
+      "fields": {
+        "status": "needs_review"
+      }
+    },
+    "invoice_vat10_retail.jpg": {
+      "relative_path": "images/invoice_vat10_retail.jpg",
+      "format": "image_jpg",
+      "expected_document_type": "INVOICE",
+      "description": "Ảnh JPG hóa đơn GTGT phục vụ AC G4T-42 (bổ sung ảnh JPG)",
+      "fields": {
+        "invoice_number": "0000305",
+        "invoice_series": "1C26TDA",
+        "seller_tax_id": "0401882233",
+        "gross_total": "22000000"
+      }
+    },
+    "mixed_pack": {
+      "relative_path": "mixed_pack/manifest.json",
+      "format": "mixed_pack",
+      "expected_document_type": "MIXED",
+      "description": "Lô hồ sơ hỗn hợp đa định dạng kèm manifest theo tiêu chí AC G4T-42",
+      "fields": {
+        "package_name": "mixed_tax_batch_01",
+        "total_documents": 7
+      }
+    }
+  }
+}
