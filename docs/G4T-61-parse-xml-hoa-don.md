@@ -6,25 +6,58 @@ Mục tiêu theo Jira: parse trực tiếp XML hóa đơn điện tử theo các
 RFP liên quan: EXT 02 (mapping có phiên bản, kiểm tra schema), EXT 03 (trường header), EXT 05 (bằng chứng XML path),
 EXT 06 (chuẩn hóa, thiếu là chưa biết), DAT 03 (cấu trúc trường), SEC 04 (chặn XXE), VN 01/02 (Unicode, MST, vòng đời).
 
-Code: `backend/app/xml_parser.py` · Test: `backend/tests/test_xml_parser.py`
+Code: `backend/app/xml_parser.py`, `backend/app/extraction.py` (bộ xử lý của worker), `backend/scripts/evaluate_xml_dataset.py`
+Test: `backend/tests/test_xml_parser.py` (an toàn, mã lỗi), `backend/tests/test_xml_golden.py` (dataset chính thức, worker)
 
-> **Trạng thái: đang chờ G4T-42 và G4T-39.** Jira ghi G4T-61 *is blocked by* G4T-42 (dataset tổng hợp, Khiêm) và
-> G4T-39 (hàng đợi + worker, Thuận). Bản này mới có parser, phần an toàn và mã lỗi. **Không có dữ liệu hóa đơn tự tạo.**
-> Mẫu XML và test trích xuất trường sẽ lấy từ dataset G4T-42 sau khi dataset được đưa lên và review.
+> **Trạng thái (22/11):** đã code và đã test trên dataset chính thức G4T-42 (PR #15, đã merge); PR #13 chờ review.
+> Chưa merge vào `main`. Trên `main` hiện vẫn là parser cũ `tt-generic-v0` (chưa đối chiếu file thật, không có worker
+> gọi tới); khi PR #13 merge, `tct-hdon-v1` thay thế hoàn toàn bản cũ.
+> Cách ghi trạng thái theo góp ý của trưởng nhóm: **coded → tested → reviewed → merged → accepted**. G4T-61 đang ở **tested**.
 
 ## 1. Đối chiếu tiêu chí nghiệm thu
 
-| Tiêu chí (Jira G4T-61) | Tình trạng | Ghi chú |
+| Tiêu chí (Jira G4T-61) | Tình trạng | Bằng chứng |
 |---|---|---|
-| Có mẫu XML hợp lệ cho từng chuẩn được hỗ trợ | ⏳ Chờ G4T-42 | Mẫu do Khiêm tạo trong dataset, PO xác nhận chuẩn. Không tự tạo mẫu |
-| Parse thành cấu trúc dữ liệu có schema rõ ràng | ✔ Code xong, ⏳ test trên dataset | `XmlParseResult` / `ExtractedField` (Pydantic) |
-| Giữ MST và số hóa đơn dạng chuỗi, cả số 0 đầu; bảo toàn Unicode | ✔ Code xong, ⏳ test trên dataset | Không ép sang số; giữ `raw_value` nguyên văn, `normalized_value` chuẩn NFC |
-| XML sai cấu trúc trả lỗi có mã và thông điệp rõ ràng | ✔ Có test | `test_errors_have_code_and_message`, `test_error_does_not_leak_document_content` |
-| Chặn DTD / external entities (XXE) | ✔ Có test | 3 chuỗi tấn công trong `test_errors_have_code_and_message` |
-| Kết quả liên kết `document_id`, `job_id`, có XML path | ✔ Code xong, ⏳ test trên dataset | `test_empty_skeleton_…` kiểm tra liên kết và XML path; test với giá trị thật chờ dataset |
+| Có mẫu XML hợp lệ cho từng chuẩn được hỗ trợ | ✔ tested | 7 mẫu `tct-hdon-v1` trong dataset G4T-42 (`tests/fixtures/xml`, Khiêm tạo, ghi rõ dữ liệu giả lập) |
+| Parse thành cấu trúc dữ liệu có schema rõ ràng | ✔ tested | `XmlParseResult` / `ExtractedField`; lưu vào `extraction_runs`, `extracted_fields` (PR #18) |
+| Giữ MST và số hóa đơn dạng chuỗi, cả số 0 đầu; bảo toàn Unicode | ✔ tested | `test_every_ground_truth_field_matches`: 143/143 trường khớp ground truth |
+| XML sai cấu trúc trả lỗi có mã và thông điệp rõ ràng | ✔ tested | `test_malformed_sample_returns_expected_code`, `test_errors_have_code_and_message` |
+| Chặn DTD / external entities (XXE) | ✔ tested | 3 chuỗi tấn công trong `test_errors_have_code_and_message` |
+| Kết quả liên kết `document_id`, `job_id`, có XML path | ✔ tested | `test_worker_saves_field_and_document_results`: qua worker thật, `extraction_runs.job_id`, `source_anchor.xml_path` |
 
-Việc còn lại khi G4T-42 có: review dataset (đúng chuẩn PO xác nhận, có Ground Truth JSON), chạy parser trên dataset,
-so với Ground Truth, sửa mapping nếu lệch, viết test trích xuất trường dựa trên dataset đó.
+## 1a. Kết quả trên dataset chính thức (hai lớp đánh giá riêng)
+
+Theo góp ý P0 của trưởng nhóm, kết quả **không gộp thành một điểm**:
+- **Lớp trường:** số trường khớp ground truth / tổng số trường.
+- **Lớp tài liệu:** tài liệu chỉ đúng khi mọi trường khớp, hướng hóa đơn đúng, kết quả kiểm tra schema đúng và không có
+  quy tắc mức tài liệu nào báo lỗi (mục 7a). Một tài liệu có thể đúng từng trường mà vẫn sai ở mức tài liệu
+  (`test_fields_all_valid_but_document_wrong`), và ngược lại một trường sai không che các kết luận mức tài liệu
+  (`test_field_wrong_does_not_hide_document_findings`).
+
+Chạy lại: `cd backend && python -m scripts.evaluate_xml_dataset` (thêm `--json` để lấy số liệu máy đọc).
+Test `test_two_level_report_on_official_dataset` khóa các con số này.
+
+Dataset `3.1.0` · parser `0.3.0` · mapping `tct-hdon-v1`
+
+| Lớp | Đúng | Tổng |
+|---|---|---|
+| Trường (field accuracy) | 143 | 143 |
+| Tài liệu (document correctness) | 7 | 7 |
+| Tệp lỗi trả đúng mã | 1 | 1 |
+
+| Tệp | Trường đúng | Hướng | Schema | Quy tắc tài liệu lỗi | Tài liệu đúng |
+|---|---|---|---|---|---|
+| `tct_hdon_01_vat10_standard.xml` | 21/21 | ✔ | ✔ | — | ✔ |
+| `tct_hdon_02_vat8_multi_rate.xml` | 24/24 | ✔ | ✔ | — | ✔ |
+| `tct_hdon_03_vat0_export_foreign.xml` | 20/20 | ✔ | ✔ | — | ✔ |
+| `tct_hdon_04_outgoing_branch.xml` | 21/21 | ✔ | ✔ | — | ✔ |
+| `tct_hdon_05_replacement.xml` | 26/26 | ✔ | ✔ | — | ✔ |
+| `tct_hdon_06_wrapped_transmission.xml` | 21/21 | ✔ | ✔ | — | ✔ |
+| `tct_hdon_07_missing_optional.xml` | 10/10 | ✔ | ✔ | — | ✔ |
+| `malformed_invoice.xml` | lỗi kỳ vọng `xml_malformed`, nhận `xml_malformed` | | | | ✔ |
+
+XML là định dạng có cấu trúc, đọc theo quy tắc cố định nên **không có điểm tin cậy** kiểu mô hình: cột `confidence`
+để trống (DAT 03 ghi "confidence if available"). Điểm tin cậy sẽ có ở OCR (G4T-23).
 
 ## 2. Biến thể và mapping
 
@@ -123,21 +156,33 @@ Lỗi không chứa nội dung tài liệu (`test_error_does_not_leak_document_c
 Thiếu một **trường** bắt buộc (ví dụ số hóa đơn rỗng) không phải lỗi: kết quả vẫn trả về với `schema_check.passed = false`
 để người duyệt xử lý, vì các trường còn lại vẫn có ích.
 
-## 7. Cách worker dùng (bàn giao cho Thuận, G4T-70)
+## 7. Nối với worker (`app/extraction.py`)
 
-```python
-from app.xml_parser import XmlParseError, parse_invoice_xml
+Bộ xử lý mặc định của worker (`worker.default_processor`, G4T-70 của Thuận) gọi `extraction.extract_processor`.
+Trước đây bộ xử lý mặc định chỉ đọc bản gốc rồi báo SUCCEEDED (nhận xét P0 "worker báo thành công giả"). Nay:
 
-data = jobs.read_original(store, db, job)            # kiểm tra sha256, chỉ đọc
-try:
-    result = parse_invoice_xml(data, client_tax_id, document_id=job.document_id, job_id=job.id)
-    save_result(db, result)                          # lưu kết quả: chưa có bảng, xem mục 9
-    jobs.succeed(db, job, f"{result.processor} {result.processor_version}")
-except XmlParseError as err:
-    jobs.fail(db, job, err.code)
-```
+| Đầu vào | Kết quả job | Dữ liệu lưu |
+|---|---|---|
+| XML hóa đơn `tct-hdon-v1` | `succeeded`, `processor_version = "xml-parser 0.3.0"` | 1 `extraction_runs` (status succeeded, `job_id`), mỗi trường 1 `extracted_fields` (`field_status`, `extraction_method = xml`, `source_anchor.xml_path`), các quy tắc mức tài liệu trong `document_validations` |
+| XML không parse được | `dead_letter`, mã `xml_*`, không thử lại | 1 `extraction_runs` status failed kèm `error_code` để truy vết |
+| PDF, ảnh (chưa có bộ xử lý) | `dead_letter`, mã `unsupported_document` | không có kết quả; **không báo thành công giả**. Khi có G4T-62 và OCR sẽ có bộ xử lý riêng |
 
-Test `test_worker_flow_unsupported_xml_goes_to_dead_letter_with_code` chạy luồng lỗi với file upload qua API. Luồng thành công sẽ test trên dataset G4T-42.
+Kết quả và trạng thái job được ghi trong **cùng một transaction** với worker (`object_session(job)`): không thể có
+job SUCCEEDED mà thiếu kết quả. MST dùng để xác định hướng hóa đơn lấy từ pháp nhân (`tax_entities`) của tài liệu,
+không có thì lấy MST khách hàng.
+
+### 7a. Quy tắc mức tài liệu (`document_validations`, `validation_scope = whole_document`)
+
+| `rule_code` | Kiểm tra | `skipped` khi |
+|---|---|---|
+| `required_fields_present` | Không thiếu trường bắt buộc | — |
+| `no_field_conflicts` | Không có trường xuất hiện nhiều lần | — |
+| `totals_consistent` | Tiền trước thuế + tiền thuế = tổng thanh toán (Decimal, EXT 07) | thiếu một trong ba giá trị (không suy ra giá trị thiếu, EXT 06) |
+| `tax_breakdown_consistent` | Tổng thuế theo từng thuế suất = tổng tiền thuế | không có bảng thuế suất |
+| `direction_determined` | Xác định được hóa đơn đầu vào hay đầu ra | — |
+
+**Chưa làm (cần nhóm chốt):** worker chưa chuyển trạng thái *tài liệu* (`received → processing → needs_review`,
+G4T-67 mục 6), nên tài liệu vẫn ở `received` sau khi job xong.
 
 ## 8. An toàn
 
@@ -149,11 +194,8 @@ Test `test_worker_flow_unsupported_xml_goes_to_dead_letter_with_code` chạy lu�
 
 ## 9. Ngoài phạm vi / cần làm tiếp
 
-- **Bảng lưu kết quả trích xuất** (`extracted_fields` theo DAT 03): cần thống nhất với story review; hiện kết quả là
-  object Pydantic, có thể lưu dạng JSON hoặc từng dòng.
 - Kiểm tra theo **XSD chính thức**: cần file XSD được THTax/PO cung cấp; hiện kiểm tra cấu trúc tối thiểu và trường bắt buộc.
-- So sánh số học tổng tiền (EXT 07), ghép XML với PDF cùng hóa đơn (EXT 08).
-- Lấy MST khách hàng để tính hướng hóa đơn: worker lấy từ `clients.tax_id` của tài liệu.
+- Ghép XML với PDF của cùng hóa đơn (EXT 08); chính sách làm tròn khi so tổng tiền có ngoại tệ (EXT 07).
 
 ## 10. Câu hỏi cho PO
 

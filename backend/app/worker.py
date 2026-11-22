@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from . import jobs
 from .db import SessionLocal
+from .extraction import extract_processor
 from .models import ProcessingJob
 from .storage import LocalWriteOnceStore
 
@@ -24,12 +25,13 @@ ProcessorFn = Callable[[ProcessingJob, bytes], str]
 
 
 def default_processor(job: ProcessingJob, data: bytes) -> str:
-    """Bộ xử lý mặc định ở G4T-69: xác nhận đọc nguyên vẹn tệp gốc từ queue.
+    """Bộ xử lý mặc định: trích xuất thật (app/extraction.py, G4T-61).
 
-    Module trích xuất XML/OCR và chuyển trạng thái tài liệu sẽ được gắn vào đây ở G4T-70.
+    Trước đây hàm này chỉ trả PROCESSOR_VERSION nên job luôn SUCCEEDED dù không trích xuất gì
+    (nhận xét P0 "worker báo thành công giả"). Nay XML hóa đơn được parse và lưu kết quả; loại chưa
+    hỗ trợ (PDF/ảnh, chờ G4T-62 và OCR) trả lỗi `unsupported_document` thay vì báo thành công.
     """
-    _ = (job, data)
-    return os.getenv("PROCESSOR_VERSION", "queue-runner-v0.1.0")
+    return extract_processor(job, data)
 
 
 def process_one(
