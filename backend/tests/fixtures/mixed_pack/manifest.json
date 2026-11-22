@@ -1,7 +1,7 @@
 {
   "package_name": "mixed_tax_batch_01",
   "batch_type": "MIXED",
-  "description": "Gói hồ sơ tiếp nhận hỗn hợp đa định dạng phục vụ kiểm thử phân loại G4T-24 và xử lý hàng đợi G4T-71",
+  "description": "Lô hồ sơ đa định dạng (Batch) gồm 7 tài liệu riêng biệt phục vụ kiểm thử xử lý hàng đợi G4T-71",
   "total_documents": 7,
   "items": [
     {

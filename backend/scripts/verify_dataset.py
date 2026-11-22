@@ -40,7 +40,7 @@ for it in mdata["items"]:
     print(f"    - {it['file']:<28} [{it['format']:^8}] -> Nhan G4T-24: {it['expected_document_type']:<20} (Ton tai: {exists})")
 
 print("\n[MUC 4] KIEM TRA NHAN PHAN LOAI TRONG GROUND_TRUTH.JSON (THEO G4T-24)")
-gt_p = os.path.join(FIXTURES_DIR, "xml", "ground_truth.json")
+gt_p = os.path.join(FIXTURES_DIR, "ground_truth.json")
 with open(gt_p, encoding="utf-8") as gf:
     gt = json.load(gf)
 
@@ -49,7 +49,7 @@ for fname, meta in gt["files"].items():
     doc_type = meta.get("expected_document_type", "CHUA_CO")
     types_count[doc_type] = types_count.get(doc_type, 0) + 1
 
-print("  * Thong ke nhan G4T-24 tren toan bo 17 muc:")
+print(f"  * Thong ke nhan G4T-24 tren toan bo {len(gt['files'])} muc:")
 for t, cnt in sorted(types_count.items()):
     print(f"    + {t:<22}: {cnt} tai lieu")
 

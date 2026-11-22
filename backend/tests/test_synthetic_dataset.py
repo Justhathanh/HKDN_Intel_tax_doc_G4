@@ -130,7 +130,8 @@ def test_tax_notice_classification_sample():
     reader = PdfReader(str(pdf_path))
     text = reader.pages[0].extract_text()
     assert "THÔNG BÁO" in text
-    assert "14285/TB-CCT-QLT" in text
+    assert "14285/TB-CCT" in text
+    assert "GIẢ LẬP" in text
 
 
 def test_tax_payment_receipt_classification_sample():
@@ -140,7 +141,25 @@ def test_tax_payment_receipt_classification_sample():
     reader = PdfReader(str(pdf_path))
     text = reader.pages[0].extract_text()
     assert "GIẤY NỘP TIỀN VÀO NGÂN SÁCH NHÀ NƯỚC" in text
-    assert "GNT-2026-00892" in text
+    assert "GNT-2026" in text
+    assert "GIẢ LẬP" in text
+
+
+def test_mixed_documents_multi_page_pdf():
+    """Kiểm tra tệp PDF đa trang ghép nhiều loại chứng từ mang nhãn MIXED (theo chuẩn G4T-24)."""
+    pdf_path = PDF_DIR / "mixed_documents_multi_page.pdf"
+    assert pdf_path.exists(), "mixed_documents_multi_page.pdf phải tồn tại!"
+    reader = PdfReader(str(pdf_path))
+    assert len(reader.pages) == 3, f"mixed_documents_multi_page.pdf phải có đúng 3 trang, nhận {len(reader.pages)}"
+    # Trang 1: Hóa đơn điện tử
+    p1_text = reader.pages[0].extract_text()
+    assert "HÓA ĐƠN GIÁ TRỊ GIA TĂNG" in p1_text
+    # Trang 2: Thông báo nộp tiền thuế
+    p2_text = reader.pages[1].extract_text()
+    assert "THÔNG BÁO NỘP TIỀN THUẾ" in p2_text
+    # Trang 3: Giấy nộp tiền NSNN
+    p3_text = reader.pages[2].extract_text()
+    assert "GIẤY NỘP TIỀN VÀO NGÂN SÁCH NHÀ NƯỚC" in p3_text
 
 
 def test_scanned_image_samples_validity():

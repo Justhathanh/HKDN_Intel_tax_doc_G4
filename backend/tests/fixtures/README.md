@@ -49,11 +49,12 @@ Căn cứ pháp lý & kỹ thuật: **RFP 2026 – Nghị định 254/2026/NĐ-C
 
 | Tệp PDF | Label (G4T-24) | Mục đích phục vụ | Đặc tính kỹ thuật |
 |---|---|---|---|
-| `invoice_digital_text_layer.pdf` | `INVOICE` | Phục vụ `G4T-62 ST08 - PDF Text-layer Extraction` (Quốc An) | PDF sinh bằng ReportLab có font tiếng Việt (Arial), cấu trúc chuẩn 100% compliant (không lỗi Poppler), chứa luồng text trực tiếp. |
-| `invoice_scanned_no_text.pdf` | `INVOICE` | Phục vụ `G4T-62` (kiểm tra phân biệt PDF scan) & `G4T-23` (OCR) | PDF chỉ chứa ảnh raster, tuyệt đối không có text layer (`extract_text() == ""` xác nhận bằng `pypdf`). |
+| `invoice_digital_text_layer.pdf` | `INVOICE` | Phục vụ `G4T-62 ST08 - PDF Text-layer Extraction` (Quốc An) | PDF sinh bằng ReportLab có font tiếng Việt (Arial), cấu trúc chuẩn 100% compliant (không lỗi Poppler), chứa luồng text trực tiếp. Có watermark chéo. |
+| `invoice_scanned_no_text.pdf` | `INVOICE` | Phục vụ `G4T-62` (kiểm tra phân biệt PDF scan) & `G4T-23` (OCR) | PDF chỉ chứa ảnh raster, tuyệt đối không có text layer (`extract_text() == ""` xác nhận bằng `pypdf`). Có watermark chéo. |
 | `non_tax_contract.pdf` | `UNKNOWN` | Phục vụ `G4T-24 ST11 - Document Classification` (Tường Vy) | Hợp đồng kinh tế dịch vụ tư vấn doanh nghiệp (tài liệu phi thuế). |
-| `tax_notice_cqt.pdf` | `TAX_NOTICE` | Phục vụ `G4T-24 ST11 - Document Classification` (Tường Vy) | Thông báo nộp tiền thuế và các khoản thu NSNN của Chi cục Thuế Quận Cầu Giấy. |
-| `tax_payment_receipt_nsnn.pdf` | `TAX_PAYMENT_RECEIPT` | Phục vụ `G4T-24 ST11 - Document Classification` (Tường Vy) | Giấy nộp tiền vào Ngân sách Nhà nước theo Mẫu C1-02/NS qua KBNN và Vietcombank. |
+| `tax_notice_cqt.pdf` | `TAX_NOTICE` | Phục vụ `G4T-24 ST11 - Document Classification` (Tường Vy) | Thông báo nộp tiền thuế của Chi cục Thuế Khu Vực Giả Định Alpha (100% tên & địa chỉ giả lập, có watermark). |
+| `tax_payment_receipt_nsnn.pdf` | `TAX_PAYMENT_RECEIPT` | Phục vụ `G4T-24 ST11 - Document Classification` (Tường Vy) | Giấy nộp tiền vào Ngân sách Nhà nước theo Mẫu C1-02/NS qua KBNN Giả Định Alpha. |
+| `mixed_documents_multi_page.pdf` | `MIXED` | Phục vụ `G4T-24 ST11` & `G4T-42` | Tệp PDF 3 trang ghép nhiều loại chứng từ (Trang 1: Hóa đơn, Trang 2: Thông báo thuế, Trang 3: Giấy nộp tiền) gán nhãn MIXED chuẩn 1 file = 1 tài liệu. |
 
 ### 📁 C. Nhóm Hình ảnh Scan PNG & JPG (`fixtures/images/`)
 
@@ -74,7 +75,7 @@ Căn cứ pháp lý & kỹ thuật: **RFP 2026 – Nghị định 254/2026/NĐ-C
 
 ## 3. Bảng chân lý Ground Truth (`fixtures/ground_truth.json`)
 
-Tệp `ground_truth.json` (phiên bản 3.0.0 đặt tại `backend/tests/fixtures/ground_truth.json` và bản sao tại `xml/ground_truth.json`) đóng vai trò là **Test Oracle** chuẩn mực của dự án:
+Tệp `ground_truth.json` (phiên bản v3.1.0 duy nhất đặt tại `backend/tests/fixtures/ground_truth.json`, đã dọn dẹp các bản trùng lặp) đóng vai trò là **Test Oracle** chuẩn mực của dự án:
 - **KPI 1 - Field Accuracy**: Đối chiếu từng trường dữ liệu trích xuất (MST, số hóa đơn, ngày lập, tiền, thuế) với giá trị ground truth.
 - **KPI 2 - Whole-Document Correctness**: Kiểm tra tính toán số học chuẩn xác từng đồng bằng kiểu `Decimal` (`gross_total = net_total + tax_total`).
 - **Standardized Classification (G4T-24)**: Toàn bộ mẫu đều có nhãn phân loại chuẩn (`INVOICE`, `TAX_NOTICE`, `TAX_PAYMENT_RECEIPT`, `UNKNOWN`, `MIXED`).
