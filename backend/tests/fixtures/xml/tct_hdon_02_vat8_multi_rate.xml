@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<HDon>
+    <DLHDon>
+        <TTChung>
+            <PBan>2.0.0</PBan>
+            <THDon>Hóa đơn giá trị gia tăng</THDon>
+            <KHMSHDon>1</KHMSHDon>
+            <KHHDon>1C26MHK</KHHDon>
+            <SHDon>0001289</SHDon>
+            <NLap>2026-04-20</NLap>
+            <DVTTe>VND</DVTTe>
+            <TGia>1</TGia>
+            <HTTToan>Chuyển khoản</HTTToan>
+        </TTChung>
+        <NDHDon>
+            <NBan>
+                <Ten>TẬP ĐOÀN CÔNG NGHIỆP THỬ NGHIỆM NAM PHÁT</Ten>
+                <MST>0318991122</MST>
+                <DChi>Số 456 Đại Lộ Kịch Bản Beta, Phường Thử Nghiệm 2, Quận Giả Lập, TP. Hồ Chí Minh</DChi>
+            </NBan>
+            <NMua>
+                <Ten>CÔNG TY CỔ PHẦN XÂY DỰNG MẪU THỬ KHANG ĐIỀN</Ten>
+                <MST>0317665544</MST>
+                <DChi>Số 78 Đường Thử Nghiệm Tân Tạo, Phường Giả Lập 2, Quận Khảo Sát, TP. Hồ Chí Minh</DChi>
+            </NMua>
+            <TToan>
+                <TgTCThue>50000000</TgTCThue>
+                <TgTThue>4400000</TgTThue>
+                <TgTTTBSo>54400000</TgTTTBSo>
+                <TgTTTBChu>Năm mươi tư triệu bốn trăm nghìn đồng</TgTTTBChu>
+                <THTTLTSuat>
+                    <LTSuat>
+                        <TSuat>8%</TSuat>
+                        <ThTien>30000000</ThTien>
+                        <TThue>2400000</TThue>
+                    </LTSuat>
+                    <LTSuat>
+                        <TSuat>10%</TSuat>
+                        <ThTien>20000000</ThTien>
+                        <TThue>2000000</TThue>
+                    </LTSuat>
+                </THTTLTSuat>
+            </TToan>
+        </NDHDon>
+    </DLHDon>
+    <MCCQT>TCT031899112220261C26MHK0001289</MCCQT>
+</HDon>

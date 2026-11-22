@@ -1,0 +1,43 @@
+{
+  "package_name": "mixed_tax_batch_01",
+  "batch_type": "MIXED",
+  "description": "Lô hồ sơ đa định dạng (Batch) gồm 7 tài liệu riêng biệt phục vụ kiểm thử xử lý hàng đợi G4T-71",
+  "total_documents": 7,
+  "items": [
+    {
+      "file": "01_invoice_vat10.xml",
+      "format": "XML",
+      "expected_document_type": "INVOICE"
+    },
+    {
+      "file": "02_invoice_digital.pdf",
+      "format": "PDF_TEXT",
+      "expected_document_type": "INVOICE"
+    },
+    {
+      "file": "03_invoice_scanned.pdf",
+      "format": "PDF_SCAN",
+      "expected_document_type": "INVOICE"
+    },
+    {
+      "file": "04_retail_receipt.jpg",
+      "format": "JPG",
+      "expected_document_type": "INVOICE"
+    },
+    {
+      "file": "05_commercial_contract.pdf",
+      "format": "PDF_TEXT",
+      "expected_document_type": "UNKNOWN"
+    },
+    {
+      "file": "06_tax_notice.pdf",
+      "format": "PDF_TEXT",
+      "expected_document_type": "TAX_NOTICE"
+    },
+    {
+      "file": "07_tax_payment.pdf",
+      "format": "PDF_TEXT",
+      "expected_document_type": "TAX_PAYMENT_RECEIPT"
+    }
+  ]
+}
