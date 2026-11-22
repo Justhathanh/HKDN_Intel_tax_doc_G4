@@ -290,7 +290,18 @@ class InvoiceDocument(Base):
 
 class ExtractedField(Base):
     __tablename__ = "extracted_fields"
-    __table_args__ = (Index("ix_extracted_fields_run_name", "extraction_run_id", "field_name"),)
+    __table_args__ = (
+        CheckConstraint(
+            "field_status IN "
+            "('present', 'missing', 'not_present', 'needs_review', 'conflict')",
+            name="ck_extracted_fields_field_status",
+        ),
+        CheckConstraint(
+            "extraction_method IN ('xml', 'pdf_text', 'ocr', 'manual')",
+            name="ck_extracted_fields_extraction_method",
+        ),
+        Index("ix_extracted_fields_run_name", "extraction_run_id", "field_name"),
+    )
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_id)
     extraction_run_id: Mapped[str] = mapped_column(ForeignKey("extraction_runs.id"), nullable=False, index=True)
     invoice_id: Mapped[str | None] = mapped_column(ForeignKey("invoices.id"), index=True)
@@ -300,6 +311,8 @@ class ExtractedField(Base):
     confidence: Mapped[Decimal | None] = mapped_column(Numeric(5, 4))
     source_anchor: Mapped[dict | None] = mapped_column(JSON)  # page, bbox or XML path
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, nullable=False)
+    field_status: Mapped[str] = mapped_column(String(24), nullable=False)
+    extraction_method: Mapped[str] = mapped_column(String(24), nullable=False)
 
 
 class FieldValidation(Base):

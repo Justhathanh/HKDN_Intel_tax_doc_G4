@@ -46,8 +46,15 @@ _ERROR_DESCRIPTIONS = {
 }
 
 
-def _errors(*codes: int) -> dict:
-    return {c: {"model": ErrorBody, "description": _ERROR_DESCRIPTIONS[c]} for c in codes}
+def _errors(*codes: int, overrides: dict[int, str] | None = None) -> dict:
+    overrides = overrides or {}
+    return {
+        c: {
+            "model": ErrorBody,
+            "description": overrides.get(c, _ERROR_DESCRIPTIONS[c]),
+        }
+        for c in codes
+    }
 
 
 UPLOAD_ERRORS = _errors(400, 401, 404, 409, 413, 415, 422)
@@ -176,7 +183,7 @@ def create_client(body: ClientIn, db: Session = Depends(get_db), user: User = De
 
 
 @app.post("/clients/{client_id}/entities", status_code=201, response_model=TaxEntityOut,
-          responses=_errors(401, 404))
+          responses=_errors(401, 404, 409, overrides={409: "Mã số thuế đã tồn tại trong khách hàng."},))
 def create_tax_entity(client_id: str, body: TaxEntityIn, db: Session = Depends(get_db),
                       user: User = Depends(current_user)):
     require_scope(user, client_id)
@@ -185,34 +192,102 @@ def create_tax_entity(client_id: str, body: TaxEntityIn, db: Session = Depends(g
     entity = TaxEntity(client_id=client_id, tax_id=body.tax_id, legal_name=body.legal_name,
                        address=body.address, representative_name=body.representative_name)
     db.add(entity)
-    db.commit()
+
+    try:
+        db.commit()
+    except IntegrityError as exc:
+        db.rollback()
+
+        diagnostic = getattr(
+            getattr(exc.orig, "diag", None),
+            "constraint_name",
+            None,
+        )
+
+        sqlite_duplicate = (
+            getattr(exc.orig, "sqlite_errorname", None) == "SQLITE_CONSTRAINT_UNIQUE"
+            and str(exc.orig)
+            == "UNIQUE constraint failed: tax_entities.client_id, tax_entities.tax_id"
+        )
+
+        if diagnostic == "uq_tax_entities_client_tax_id" or sqlite_duplicate:
+            raise ApiError("duplicate_tax_id") from exc
+
+        raise
+
+
+    db.refresh(entity)
+
     return TaxEntityOut(id=entity.id, client_id=entity.client_id, tax_id=entity.tax_id,
                         legal_name=entity.legal_name, address=entity.address,
                         representative_name=entity.representative_name, is_active=entity.is_active)
 
 
-@app.post("/batches", status_code=201, response_model=BatchOut, responses=_errors(401, 404))
-def create_batch(body: BatchIn, db: Session = Depends(get_db), user: User = Depends(current_user)):
+
+
+@app.post(
+    "/batches",
+    status_code=201,
+    response_model=BatchOut,
+    responses=_errors(
+        400, 401, 404, 409,
+        overrides={
+            400: "Khách hàng có nhiều pháp nhân; cần chỉ định entity_id khi tạo batch.",
+            409: "Khách hàng chưa có pháp nhân đang hoạt động để tạo batch.",
+        },
+    ),
+)
+def create_batch(
+    body: BatchIn,
+    db: Session = Depends(get_db),
+    user: User = Depends(current_user),
+):
     require_scope(user, body.client_id)
+
     if db.get(Client, body.client_id) is None:
         raise ApiError("not_found")
+
     if body.entity_id:
         entity = db.get(TaxEntity, body.entity_id)
+
         if entity is None or entity.client_id != body.client_id or not entity.is_active:
             raise ApiError("not_found")
+
     else:
-        entities = db.scalars(select(TaxEntity).where(
-            TaxEntity.client_id == body.client_id, TaxEntity.is_active.is_(True)
-        ).order_by(TaxEntity.created_at)).all()
-        if len(entities) != 1:
-            raise ApiError("not_found" if not entities else "entity_selection_required")
+        entities = db.scalars(
+            select(TaxEntity)
+            .where(
+                TaxEntity.client_id == body.client_id,
+                TaxEntity.is_active.is_(True),
+            )
+            .order_by(TaxEntity.created_at)
+        ).all()
+
+        if not entities:
+            raise ApiError("no_tax_entity")
+
+        if len(entities) > 1:
+            raise ApiError("entity_selection_required")
+
         entity = entities[0]
-    batch = Batch(client_id=body.client_id, entity_id=entity.id,
-                  engagement_id=body.engagement_id, created_by=user.name)
+
+    batch = Batch(
+        client_id=body.client_id,
+        entity_id=entity.id,
+        engagement_id=body.engagement_id,
+        created_by=user.name,
+    )
+
     db.add(batch)
     db.commit()
-    return BatchOut(id=batch.id, client_id=batch.client_id,
-                    engagement_id=batch.engagement_id, entity_id=batch.entity_id)
+
+    return BatchOut(
+        id=batch.id,
+        client_id=batch.client_id,
+        engagement_id=batch.engagement_id,
+        entity_id=batch.entity_id,
+    )
+
 
 
 @app.post("/batches/{batch_id}/documents", status_code=201, response_model=DocumentReceipt,

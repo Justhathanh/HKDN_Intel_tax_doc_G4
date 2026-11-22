@@ -79,3 +79,60 @@ def test_tax_domain_tables_are_registered(api):
         assert db.query(TaxEntity).count() == 0
         assert db.query(Document).count() == 0
         assert db.query(Submission).count() == 0
+
+def test_create_tax_entity_rejects_duplicate_tax_id(api):
+    headers = {"X-User": "tenant-admin"}
+
+    client = api.post(
+        "/clients",
+        json={"name": "Cong ty A", "tax_id": "0012345678"},
+        headers=headers,
+    )
+    assert client.status_code == 201
+    client_id = client.json()["id"]
+
+    headers["X-Client-Ids"] = client_id
+
+    response = api.post(
+        f"/clients/{client_id}/entities",
+        json={
+            "tax_id": "0012345678",
+            "legal_name": "Chi nhanh A",
+        },
+        headers=headers,
+    )
+
+    assert response.status_code == 409
+    assert response.json()["error_code"] == "duplicate_tax_id"
+
+    with SessionLocal() as db:
+        entities = db.query(TaxEntity).filter_by(client_id=client_id).all()
+        assert len(entities) == 1
+def test_batch_rejects_client_without_active_tax_entity(api):
+    headers = {"X-User": "tenant-admin"}
+
+    client = api.post(
+        "/clients",
+        json={"name": "Cong ty A", "tax_id": "0012345678"},
+        headers=headers,
+    ).json()
+
+    client_id = client["id"]
+    headers["X-Client-Ids"] = client_id
+
+    with SessionLocal() as db:
+        entity = db.query(TaxEntity).filter_by(client_id=client_id).one()
+        entity.is_active = False
+        db.commit()
+
+    response = api.post(
+        "/batches",
+        json={
+            "client_id": client_id,
+            "engagement_id": "E-NO-ENTITY",
+        },
+        headers=headers,
+    )
+
+    assert response.status_code == 409
+    assert response.json()["error_code"] == "no_tax_entity"

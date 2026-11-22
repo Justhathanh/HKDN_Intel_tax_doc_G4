@@ -112,6 +112,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorBody'
+        '409':
+          description: Mã số thuế đã tồn tại trong khách hàng.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
         '422':
           description: Validation Error
           content:
@@ -151,6 +157,13 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/BatchOut'
+        '400':
+          description: Khách hàng có nhiều pháp nhân; cần chỉ định entity_id khi tạo
+            batch.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
         '401':
           description: Chưa xác thực
           content:
@@ -159,6 +172,12 @@ paths:
                 $ref: '#/components/schemas/ErrorBody'
         '404':
           description: Không tìm thấy hoặc không có quyền
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '409':
+          description: Khách hàng chưa có pháp nhân đang hoạt động để tạo batch.
           content:
             application/json:
               schema:
