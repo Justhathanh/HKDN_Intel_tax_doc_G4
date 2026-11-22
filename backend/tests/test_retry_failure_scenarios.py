@@ -79,9 +79,6 @@ def test_transient_failure_then_success_workflow(api):
         job1_id = initial_job.id
 
     # Lần thực thi 1: Gặp lỗi tạm thời ocr_timeout (retryable=True)
-    def failing_processor(job, data):
-        raise JobError("ocr_timeout")
-
     with SessionLocal() as db:
         claimed_job = jobs.claim_next(db, worker_id="worker-qa-01")
         assert claimed_job is not None
@@ -242,11 +239,11 @@ def test_retry_exhaustion_transitions_to_dead_letter(api):
 
 
 # ==============================================================================
-# SCENARIO 4: DLQ ROUTING, QUEUE ISOLATION & SEC 04 SANITIZATION
+# SCENARIO 4: ERROR SANITIZATION (SEC 04) & DLQ QUEUE ISOLATION
 # ==============================================================================
 
-def test_dlq_queue_isolation_and_error_sanitization(api):
-    """Kịch bản 4: Job ở dead_letter bị cô lập hoàn toàn khỏi queue và ngoại lệ lạ được chuẩn hóa an toàn (SEC 04)."""
+def test_error_sanitization_sec04_and_dlq_queue_isolation(api):
+    """Kịch bản 4: Ngoại lệ lạ được chuẩn hóa an toàn (SEC 04) và job dead_letter bị cô lập hoàn toàn khỏi queue."""
     doc_id, headers = _upload_test_document(api, tax_id="KH-DLQ-SEC-01")
 
     # Giả lập ném exception chứa thông tin nhạy cảm (đường dẫn bí mật, mã SQL)
@@ -262,6 +259,23 @@ def test_dlq_queue_isolation_and_error_sanitization(api):
         assert job.error_code == "internal_error"
         assert "secretPass" not in (job.error_message or "")
         assert "internal-db" not in (job.error_message or "")
+
+    # Kiểm tra tính cô lập của DLQ: job ở dead_letter tuyệt đối không được worker claim
+    with SessionLocal() as db:
+        doc = db.get(Document, doc_id)
+        dlq_job = ProcessingJob(
+            client_id=doc.client_id, document_id=doc_id, job_type="extract",
+            status=JobStatus.DEAD_LETTER, attempt_no=3, max_attempts=3,
+            correlation_id=str(uuid.uuid4()), input_sha256="abc"
+        )
+        db.add(dlq_job)
+        db.commit()
+
+        # Worker tìm job tiếp theo tuyệt đối không bao giờ claim job ở dead_letter
+        claimed = jobs.claim_next(db, worker_id="worker-dlq-test")
+        if claimed is not None:
+            assert claimed.status == JobStatus.QUEUED
+            assert claimed.id != dlq_job.id
 
 
 # ==============================================================================
