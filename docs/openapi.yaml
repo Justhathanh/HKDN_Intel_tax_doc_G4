@@ -310,6 +310,119 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+  /jobs/{job_id}:
+    get:
+      summary: Get Job
+      description: Trạng thái một lần thử xử lý. Job của khách hàng khác trả 404 như
+        không tồn tại.
+      operationId: get_job_jobs__job_id__get
+      parameters:
+      - name: job_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Job Id
+      - name: x-user
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: X-User
+      - name: x-client-ids
+        in: header
+        required: false
+        schema:
+          type: string
+          default: ''
+          title: X-Client-Ids
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobOut'
+        '401':
+          description: Chưa xác thực
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '404':
+          description: Không tìm thấy hoặc không có quyền
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /documents/{document_id}/jobs:
+    get:
+      summary: List Document Jobs
+      description: Lịch sử các lần thử của một tài liệu, cũ trước mới sau; latest
+        là lần thử mới nhất.
+      operationId: list_document_jobs_documents__document_id__jobs_get
+      parameters:
+      - name: document_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Document Id
+      - name: job_type
+        in: query
+        required: false
+        schema:
+          type: string
+          default: extract
+          title: Job Type
+      - name: x-user
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: X-User
+      - name: x-client-ids
+        in: header
+        required: false
+        schema:
+          type: string
+          default: ''
+          title: X-Client-Ids
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobList'
+        '401':
+          description: Chưa xác thực
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '404':
+          description: Không tìm thấy hoặc không có quyền
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
 components:
   schemas:
     BatchIn:
@@ -521,6 +634,131 @@ components:
           title: Detail
       type: object
       title: HTTPValidationError
+    JobErrorOut:
+      properties:
+        code:
+          type: string
+          title: Code
+        message:
+          type: string
+          title: Message
+        retryable:
+          type: boolean
+          title: Retryable
+      type: object
+      required:
+      - code
+      - message
+      - retryable
+      title: JobErrorOut
+      description: Lỗi của một lần thử; chỉ gồm mã và câu thông báo trong danh sách
+        cho phép (SEC 04).
+    JobList:
+      properties:
+        document_id:
+          type: string
+          title: Document Id
+        latest:
+          anyOf:
+          - $ref: '#/components/schemas/JobOut'
+          - type: 'null'
+        items:
+          items:
+            $ref: '#/components/schemas/JobOut'
+          type: array
+          title: Items
+      type: object
+      required:
+      - document_id
+      - latest
+      - items
+      title: JobList
+    JobOut:
+      properties:
+        job_id:
+          type: string
+          title: Job Id
+        document_id:
+          type: string
+          title: Document Id
+        job_type:
+          type: string
+          title: Job Type
+        status:
+          type: string
+          title: Status
+        display_status:
+          type: string
+          title: Display Status
+        will_retry:
+          type: boolean
+          title: Will Retry
+        attempt_no:
+          type: integer
+          title: Attempt No
+        max_attempts:
+          type: integer
+          title: Max Attempts
+        retry_of_job_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Retry Of Job Id
+        correlation_id:
+          type: string
+          title: Correlation Id
+        processor_version:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Processor Version
+        created_at:
+          type: string
+          title: Created At
+        next_attempt_at:
+          type: string
+          title: Next Attempt At
+        started_at:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Started At
+        finished_at:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Finished At
+        duration_ms:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Duration Ms
+        error:
+          anyOf:
+          - $ref: '#/components/schemas/JobErrorOut'
+          - type: 'null'
+      type: object
+      required:
+      - job_id
+      - document_id
+      - job_type
+      - status
+      - display_status
+      - will_retry
+      - attempt_no
+      - max_attempts
+      - retry_of_job_id
+      - correlation_id
+      - processor_version
+      - created_at
+      - next_attempt_at
+      - started_at
+      - finished_at
+      - duration_ms
+      - error
+      title: JobOut
+      description: 'Trạng thái một lần thử xử lý (G4T-68). Không trả locked_by, lease,
+        input_sha256: đó là dữ liệu nội bộ.'
     Manifest:
       properties:
         batch_id:
