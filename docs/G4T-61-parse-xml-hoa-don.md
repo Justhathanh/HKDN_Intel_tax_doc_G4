@@ -47,6 +47,7 @@ Nhận diện: có phần tử `HDon` chứa `DLHDon/TTChung`, ở gốc hoặc 
 | `seller_address` | `DLHDon/NDHDon/NBan/DChi` | chữ | |
 | `buyer_name` | `DLHDon/NDHDon/NMua/Ten` | chữ | |
 | `buyer_tax_id` | `DLHDon/NDHDon/NMua/MST` | MST | |
+| `buyer_address` | `DLHDon/NDHDon/NMua/DChi` | chữ | |
 | `net_total` | `DLHDon/NDHDon/TToan/TgTCThue` | số thập phân | |
 | `tax_total` | `DLHDon/NDHDon/TToan/TgTThue` | số thập phân | |
 | `gross_total` | `DLHDon/NDHDon/TToan/TgTTTBSo` | số thập phân | ✔ |

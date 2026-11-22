@@ -22,7 +22,7 @@ from defusedxml.common import DefusedXmlException
 from pydantic import BaseModel
 
 PARSER_NAME = "xml-parser"
-PARSER_VERSION = "0.2.0"
+PARSER_VERSION = "0.3.0"
 
 FieldStatus = Literal["present", "missing", "not_present", "needs_review", "conflict"]
 
@@ -115,6 +115,7 @@ TCT_HDON_V1 = Variant(
         FieldSpec("seller_address", "DLHDon/NDHDon/NBan/DChi"),
         FieldSpec("buyer_name", "DLHDon/NDHDon/NMua/Ten"),
         FieldSpec("buyer_tax_id", "DLHDon/NDHDon/NMua/MST", "tax_id"),
+        FieldSpec("buyer_address", "DLHDon/NDHDon/NMua/DChi"),
         FieldSpec("net_total", "DLHDon/NDHDon/TToan/TgTCThue", "decimal"),
         FieldSpec("tax_total", "DLHDon/NDHDon/TToan/TgTThue", "decimal"),
         FieldSpec("gross_total", "DLHDon/NDHDon/TToan/TgTTTBSo", "decimal", required=True),

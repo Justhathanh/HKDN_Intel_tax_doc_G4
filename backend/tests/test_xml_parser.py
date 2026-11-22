@@ -60,6 +60,8 @@ def test_empty_skeleton_reports_required_fields_missing_not_zero():
             continue
         assert f.raw_value is None and f.normalized_value is None
         assert f.field_status in ("missing", "not_present") and f.xml_path.startswith("/HDon/")
+    buyer_address = r.field("buyer_address")
+    assert (buyer_address.field_status, buyer_address.xml_path) == ("not_present", "/HDon/DLHDon/NDHDon/NMua/DChi")
 
 
 @pytest.mark.parametrize("seller,buyer,label,status", [
