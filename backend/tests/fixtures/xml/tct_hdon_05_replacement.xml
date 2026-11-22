@@ -1,35 +1,48 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <HDon>
-  <DLHDon>
-    <TTChung>
-      <KHMSHDon>1</KHMSHDon>
-      <KHHDon>C26TAA</KHHDon>
-      <SHDon>00000046</SHDon>
-      <NLap>2026-11-14</NLap>
-      <DVTTe>VND</DVTTe>
-      <TTHDLQuan>
-        <TCHDon>1</TCHDon>
-        <LHDCLQuan>1</LHDCLQuan>
-        <KHMSHDCLQuan>1</KHMSHDCLQuan>
-        <KHHDCLQuan>C26TAA</KHHDCLQuan>
-        <SHDCLQuan>00000045</SHDCLQuan>
-        <NLHDCLQuan>2026-11-10</NLHDCLQuan>
-      </TTHDLQuan>
-    </TTChung>
-    <NDHDon>
-      <NBan>
-        <Ten>Công ty TNHH Thương Mại Mẫu Thử Một</Ten>
-        <MST>0109876543</MST>
-      </NBan>
-      <NMua>
-        <Ten>Công ty Cổ phần Dịch Vụ Mẫu Thử Hai</Ten>
-        <MST>0312345678</MST>
-      </NMua>
-      <TToan>
-        <TgTCThue>12000000</TgTCThue>
-        <TgTThue>1160000</TgTThue>
-        <TgTTTBSo>13160000</TgTTTBSo>
-      </TToan>
-    </NDHDon>
-  </DLHDon>
+    <DLHDon>
+        <TTChung>
+            <PBan>2.0.0</PBan>
+            <THDon>Hóa đơn giá trị gia tăng thay thế</THDon>
+            <KHMSHDon>1</KHMSHDon>
+            <KHHDon>1C26THG</KHHDon>
+            <SHDon>0002560</SHDon>
+            <NLap>2026-07-25</NLap>
+            <DVTTe>VND</DVTTe>
+            <TGia>1</TGia>
+            <TTHDLQuan>
+                <TCHDon>1</TCHDon>
+                <KHMSHDCLQuan>1</KHMSHDCLQuan>
+                <KHHDCLQuan>1C26THG</KHHDCLQuan>
+                <SHDCLQuan>0002100</SHDCLQuan>
+                <NLHDCLQuan>2026-07-10</NLHDCLQuan>
+            </TTHDLQuan>
+        </TTChung>
+        <NDHDon>
+            <NBan>
+                <Ten>CÔNG TY TNHH PHẦN MỀM VÀ TRUYỀN THÔNG HOÀNG GIA</Ten>
+                <MST>0201993344</MST>
+                <DChi>42 Lê Hồng Phong, Phường Đông Khê, Quận Ngô Quyền, TP. Hải Phòng</DChi>
+            </NBan>
+            <NMua>
+                <Ten>CÔNG TY CỔ PHẦN THƯƠNG MẠI HẢI PHÒNG LOGISTICS</Ten>
+                <MST>0201889900</MST>
+                <DChi>15 Hoàng Diệu, Phường Minh Khai, Quận Hồng Bàng, TP. Hải Phòng</DChi>
+            </NMua>
+            <TToan>
+                <TgTCThue>35000000</TgTCThue>
+                <TgTThue>3500000</TgTThue>
+                <TgTTTBSo>38500000</TgTTTBSo>
+                <TgTTTBChu>Ba mươi tám triệu năm trăm nghìn đồng</TgTTTBChu>
+                <THTTLTSuat>
+                    <LTSuat>
+                        <TSuat>10%</TSuat>
+                        <ThTien>35000000</ThTien>
+                        <TThue>3500000</TThue>
+                    </LTSuat>
+                </THTTLTSuat>
+            </TToan>
+        </NDHDon>
+    </DLHDon>
+    <MCCQT>TCT020199334420261C26THG0002560</MCCQT>
 </HDon>

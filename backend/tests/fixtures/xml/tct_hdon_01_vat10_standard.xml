@@ -1,56 +1,43 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <HDon>
-  <DLHDon Id="data">
-    <TTChung>
-      <PBan>2.1.0</PBan>
-      <THDon>Hóa đơn giá trị gia tăng</THDon>
-      <KHMSHDon>1</KHMSHDon>
-      <KHHDon>C26TAA</KHHDon>
-      <SHDon>00000001</SHDon>
-      <NLap>2026-11-01</NLap>
-      <DVTTe>VND</DVTTe>
-      <TGia>1</TGia>
-    </TTChung>
-    <NDHDon>
-      <NBan>
-        <Ten>Công ty TNHH Cung Ứng Dịch Vụ Alpha</Ten>
-        <MST>0109876543</MST>
-        <DChi>Số 10 Đường Giả Định, Phường Dịch Vụ, Quận Hoàn Kiếm, Hà Nội</DChi>
-      </NBan>
-      <NMua>
-        <Ten>Công ty Cổ phần Thử Nghiệm Beta</Ten>
-        <MST>0312345678</MST>
-        <DChi>Số 20 Đường Thử Nghiệm, Quận 1, TP Hồ Chí Minh</DChi>
-      </NMua>
-      <DSHHDVu>
-        <HHDVu>
-          <STT>1</STT>
-          <THHDVu>Dịch vụ tư vấn phần mềm quản trị</THHDVu>
-          <ThTien>10000000</ThTien>
-          <TSuat>10%</TSuat>
-        </HHDVu>
-      </DSHHDVu>
-      <TToan>
-        <THTTLTSuat>
-          <LTSuat>
-            <TSuat>10%</TSuat>
-            <ThTien>10000000</ThTien>
-            <TThue>1000000</TThue>
-          </LTSuat>
-        </THTTLTSuat>
-        <TgTCThue>10000000</TgTCThue>
-        <TgTThue>1000000</TgTThue>
-        <TgTTTBSo>11000000</TgTTTBSo>
-        <TgTTTBChu>Mười một triệu đồng</TgTTTBChu>
-      </TToan>
-    </NDHDon>
-  </DLHDon>
-  <MCCQT>00ABCDEF0123456789ABCDEF0123456789</MCCQT>
-  <DSCKS>
-    <NBan>
-      <Signature xmlns="http://www.w3.org/2000/09/xmldsig#">
-        <SignatureValue>R0lBLUtZLUdJQS1TVEFOREFSRDEw==</SignatureValue>
-      </Signature>
-    </NBan>
-  </DSCKS>
+    <DLHDon>
+        <TTChung>
+            <PBan>2.0.0</PBan>
+            <THDon>Hóa đơn giá trị gia tăng</THDon>
+            <KHMSHDon>1</KHMSHDon>
+            <KHHDon>1C26TNN</KHHDon>
+            <SHDon>0000045</SHDon>
+            <NLap>2026-03-15</NLap>
+            <DVTTe>VND</DVTTe>
+            <TGia>1</TGia>
+            <HTTToan>TM/CK</HTTToan>
+        </TTChung>
+        <NDHDon>
+            <NBan>
+                <Ten>CÔNG TY CỔ PHẦN CÔNG NGHỆ THÔNG TIN BẢO AN</Ten>
+                <MST>0109988776</MST>
+                <DChi>Tầng 6, Tòa nhà Detech, Số 8 Tôn Thất Thuyết, Phường Mỹ Đình 2, Quận Nam Từ Liêm, TP. Hà Nội</DChi>
+                <SDThoai>02437951234</SDThoai>
+            </NBan>
+            <NMua>
+                <Ten>CÔNG TY TNHH PHÁT TRIỂN PHẦN MỀM THĂNG LONG</Ten>
+                <MST>0108877665</MST>
+                <DChi>Số 25 Vũ Ngọc Phan, Phường Láng Hạ, Quận Đống Đa, TP. Hà Nội</DChi>
+            </NMua>
+            <TToan>
+                <TgTCThue>45000000</TgTCThue>
+                <TgTThue>4500000</TgTThue>
+                <TgTTTBSo>49500000</TgTTTBSo>
+                <TgTTTBChu>Bốn mươi chín triệu năm trăm nghìn đồng</TgTTTBChu>
+                <THTTLTSuat>
+                    <LTSuat>
+                        <TSuat>10%</TSuat>
+                        <ThTien>45000000</ThTien>
+                        <TThue>4500000</TThue>
+                    </LTSuat>
+                </THTTLTSuat>
+            </TToan>
+        </NDHDon>
+    </DLHDon>
+    <MCCQT>TCT010998877620261C26TNN0000045</MCCQT>
 </HDon>

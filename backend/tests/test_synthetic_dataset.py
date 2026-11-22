@@ -1,13 +1,18 @@
 """Kiểm thử tự động bộ dữ liệu thuế mẫu tổng hợp (Synthetic Tax Test Dataset - G4T-42).
 
 Tác giả: Nguyễn Thanh Khiêm (Dev - Automated Testing / QA)
-Phạm vi đối chiếu 6 tiêu chí Acceptance Criteria của Jira:
-1. XML hóa đơn chuẩn PO (tct-hdon-v1)
-2. PDF điện tử (text layer), PDF/ảnh scan (JPG/PNG)
-3. Mẫu non-tax, tài liệu mờ/khó đọc, XML lỗi
-4. Bảng Ground Truth JSON đầy đủ expected document type
-5. Không dùng dữ liệu thật, đảm bảo an toàn bảo mật
-6. Tương thích với các bộ xử lý parser của dự án
+Phối hợp: Lương Quốc An (Backend & Schema), Đào Đoàn Tường Vy (OCR & Phân loại tài liệu), Huỳnh Hà Thanh (PO), Nguyễn Mạnh Hùng (Mentor / PO Chốt chuẩn)
+Căn cứ: RFP 2026 (Nghị định 254/2026/NĐ-CP & Thông tư 91/2026/TT-BTC) kế thừa chuẩn tct-hdon-v1
+Quy chuẩn nhãn phân loại tài liệu: G4T-24 (INVOICE, TAX_NOTICE, TAX_PAYMENT_RECEIPT, UNKNOWN, MIXED)
+
+Phạm vi Acceptance Criteria Jira G4T-42:
+1. XML hóa đơn chuẩn PO (tct-hdon-v1 độc lập với dữ liệu dev).
+2. PDF điện tử (text layer), PDF scan không text layer, PDF thông báo thuế & giấy nộp tiền.
+3. Ảnh scan (PNG rõ, PNG mờ, JPG hóa đơn).
+4. Mẫu non-tax (Hợp đồng kinh tế nhãn UNKNOWN).
+5. Gói hồ sơ hỗn hợp đa định dạng (Mixed Pack) kèm manifest.json.
+6. Bảng Ground Truth JSON đầy đủ và nhất quán toán học (Decimal).
+7. Mẫu XML lỗi cú pháp (malformed_invoice.xml).
 """
 import json
 from decimal import Decimal
@@ -22,7 +27,16 @@ FIXTURES_DIR = Path(__file__).parent / "fixtures"
 XML_DIR = FIXTURES_DIR / "xml"
 PDF_DIR = FIXTURES_DIR / "pdf"
 IMAGES_DIR = FIXTURES_DIR / "images"
+MIXED_DIR = FIXTURES_DIR / "mixed_pack"
 GROUND_TRUTH_PATH = XML_DIR / "ground_truth.json"
+
+ALLOWED_DOC_TYPES = {
+    "INVOICE",
+    "TAX_NOTICE",
+    "TAX_PAYMENT_RECEIPT",
+    "UNKNOWN",
+    "MIXED",
+}
 
 
 @pytest.fixture(scope="module")
@@ -32,10 +46,10 @@ def ground_truth() -> dict:
 
 
 def test_ground_truth_structure_and_expected_doc_types(ground_truth):
-    """Kiểm tra cấu trúc ground_truth.json, đảm bảo 100% mẫu đều có expected_document_type."""
+    """Kiểm tra cấu trúc ground_truth.json, đảm bảo 100% mẫu đều có expected_document_type theo G4T-24."""
     assert "files" in ground_truth
     files_map = ground_truth["files"]
-    assert len(files_map) >= 11, "Dataset phải bao gồm tối thiểu 11 tệp mẫu đa dạng!"
+    assert len(files_map) >= 15, f"Dataset phải có ít nhất 15 tệp/gói mẫu đa dạng! Hiện có: {len(files_map)}"
 
     for filename, meta in files_map.items():
         rel_path = meta.get("relative_path")
@@ -44,8 +58,9 @@ def test_ground_truth_structure_and_expected_doc_types(ground_truth):
         assert file_path.exists(), f"Không tìm thấy file mẫu: {file_path}"
         assert file_path.stat().st_size > 0, f"File {filename} rỗng!"
         assert "expected_document_type" in meta, f"Thiếu expected_document_type cho {filename}"
-        assert meta["expected_document_type"] in (
-            "INVOICE_VAT", "NON_TAX_CONTRACT", "CORRUPT_XML"
+        doc_type = meta["expected_document_type"]
+        assert doc_type in ALLOWED_DOC_TYPES, (
+            f"Nhãn {doc_type} của {filename} không nằm trong tập chuẩn G4T-24 {ALLOWED_DOC_TYPES}"
         )
 
 
@@ -80,32 +95,84 @@ def test_pdf_digital_text_layer_extractable():
     reader = PdfReader(str(pdf_path))
     assert len(reader.pages) >= 1
     text = reader.pages[0].extract_text()
-    assert "HOA DON GIA TRI GIA TANG" in text
-    assert "0109876543" in text
-    assert "00000055" in text
+    assert "HÓA ĐƠN GIÁ TRỊ GIA TĂNG" in text
+    assert "0108998877" in text
+    assert "00000088" in text
+
+
+def test_pdf_scanned_has_no_text_layer():
+    """Kiểm tra file PDF scan thuần túy không có text layer để phục vụ phân biệt luồng PDF (cho G4T-62)."""
+    pdf_path = PDF_DIR / "invoice_scanned_no_text.pdf"
+    assert pdf_path.exists()
+    reader = PdfReader(str(pdf_path))
+    text = reader.pages[0].extract_text()
+    assert len(text.strip()) == 0, f"PDF scan không được chứa text layer! Nhận được: '{text}'"
 
 
 def test_non_tax_contract_classification_sample():
-    """Kiểm tra file Non-Tax (hợp đồng thông thường) chứa nội dung phục vụ phân loại (cho G4T-24)."""
+    """Kiểm tra file Non-Tax (hợp đồng kinh tế) có nhãn UNKNOWN phục vụ phân loại tài liệu (cho G4T-24)."""
     pdf_path = PDF_DIR / "non_tax_contract.pdf"
     assert pdf_path.exists()
     reader = PdfReader(str(pdf_path))
     text = reader.pages[0].extract_text()
-    assert "HOP DONG NGUYEN TAC" in text
-    assert "HOA DON GIA TRI GIA TANG" not in text
+    assert "HỢP ĐỒNG KINH TẾ DỊCH VỤ" in text
+    assert "HÓA ĐƠN GIÁ TRỊ GIA TĂNG" not in text
+
+
+def test_tax_notice_classification_sample():
+    """Kiểm tra file Thông báo thuế của CQT có nhãn TAX_NOTICE phục vụ phân loại tài liệu (cho G4T-24)."""
+    pdf_path = PDF_DIR / "tax_notice_cqt.pdf"
+    assert pdf_path.exists()
+    reader = PdfReader(str(pdf_path))
+    text = reader.pages[0].extract_text()
+    assert "THÔNG BÁO" in text
+    assert "14285/TB-CCT-QLT" in text
+
+
+def test_tax_payment_receipt_classification_sample():
+    """Kiểm tra file Giấy nộp tiền NSNN có nhãn TAX_PAYMENT_RECEIPT phục vụ phân loại tài liệu (cho G4T-24)."""
+    pdf_path = PDF_DIR / "tax_payment_receipt_nsnn.pdf"
+    assert pdf_path.exists()
+    reader = PdfReader(str(pdf_path))
+    text = reader.pages[0].extract_text()
+    assert "GIẤY NỘP TIỀN VÀO NGÂN SÁCH NHÀ NƯỚC" in text
+    assert "GNT-2026-00892" in text
 
 
 def test_scanned_image_samples_validity():
-    """Kiểm tra các file ảnh scan rõ nét và mờ phục vụ OCR (cho G4T-23)."""
+    """Kiểm tra các file ảnh scan PNG và JPG phục vụ OCR (cho G4T-23 và AC G4T-42)."""
     clean_img_path = IMAGES_DIR / "invoice_scan_clean.png"
     blurred_img_path = IMAGES_DIR / "invoice_scan_blurred.png"
+    jpg_img_path = IMAGES_DIR / "invoice_vat10_retail.jpg"
+
     assert clean_img_path.exists()
     assert blurred_img_path.exists()
+    assert jpg_img_path.exists()
 
     with Image.open(clean_img_path) as img:
         img.verify()
     with Image.open(blurred_img_path) as img:
         img.verify()
+    with Image.open(jpg_img_path) as img:
+        img.verify()
+
+
+def test_mixed_pack_package_and_manifest():
+    """Kiểm tra gói tài liệu hỗn hợp đa định dạng Mixed Pack có đầy đủ manifest và tệp thành phần."""
+    manifest_path = MIXED_DIR / "manifest.json"
+    assert manifest_path.exists(), "Mixed Pack phải có manifest.json!"
+    manifest_data = json.loads(manifest_path.read_text(encoding="utf-8"))
+
+    assert manifest_data.get("batch_type") == "MIXED"
+    items = manifest_data.get("items", [])
+    assert len(items) >= 5, "Mixed Pack phải có ít nhất 5 tài liệu thành phần!"
+
+    for item in items:
+        file_name = item["file"]
+        target = MIXED_DIR / file_name
+        assert target.exists(), f"Tệp {file_name} trong mixed_pack không tồn tại trên đĩa!"
+        assert target.stat().st_size > 0, f"Tệp {file_name} rỗng!"
+        assert item["expected_document_type"] in ALLOWED_DOC_TYPES
 
 
 def test_business_logic_arithmetic_consistency(ground_truth):

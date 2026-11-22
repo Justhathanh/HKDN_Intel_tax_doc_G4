@@ -1,38 +1,50 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <TDiep>
-  <TTChung>
-    <PBan>2.0.0</PBan>
-    <MNGui>001234567890</MNGui>
-    <MNNhan>TCT</MNNhan>
-    <MLTDiep>202</MLTDiep>
-    <MTDiep>TCT000000000000000001</MTDiep>
-  </TTChung>
-  <DLieu>
-    <HDon>
-      <DLHDon>
-        <TTChung>
-          <KHMSHDon>2</KHMSHDon>
-          <KHHDon>C26TBB</KHHDon>
-          <SHDon>00000099</SHDon>
-          <NLap>2026-11-15</NLap>
-          <DVTTe>VND</DVTTe>
-        </TTChung>
-        <NDHDon>
-          <NBan>
-            <Ten>Hộ kinh doanh Mẫu Thử Ba</Ten>
-            <MST>001234567890</MST>
-          </NBan>
-          <NMua>
-            <Ten>Công ty Cổ phần Dịch Vụ Mẫu Thử Hai</Ten>
-            <MST>0312345678</MST>
-          </NMua>
-          <TToan>
-            <TgTCThue>500000</TgTCThue>
-            <TgTThue>50000</TgTThue>
-            <TgTTTBSo>550000</TgTTTBSo>
-          </TToan>
-        </NDHDon>
-      </DLHDon>
-    </HDon>
-  </DLieu>
+    <TTChung>
+        <PBan>2.0.0</PBan>
+        <MTDiep>TCT2026081599887701</MTDiep>
+        <MSNTNhan>TBT2026081501</MSNTNhan>
+    </TTChung>
+    <DLieu>
+        <HDon>
+            <DLHDon>
+                <TTChung>
+                    <PBan>2.0.0</PBan>
+                    <THDon>Hóa đơn giá trị gia tăng</THDon>
+                    <KHMSHDon>1</KHMSHDon>
+                    <KHHDon>1C26TBV</KHHDon>
+                    <SHDon>0000789</SHDon>
+                    <NLap>2026-08-15</NLap>
+                    <DVTTe>VND</DVTTe>
+                    <TGia>1</TGia>
+                </TTChung>
+                <NDHDon>
+                    <NBan>
+                        <Ten>CÔNG TY CP DƯỢC PHẨM VÀ THIẾT BỊ Y TẾ BÁCH VIỆT</Ten>
+                        <MST>0107778899</MST>
+                        <DChi>78 Giải Phóng, Phường Phương Mai, Quận Đống Đa, TP. Hà Nội</DChi>
+                    </NBan>
+                    <NMua>
+                        <Ten>BỆNH VIỆN ĐA KHOA QUỐC TẾ BẠCH MAI</Ten>
+                        <MST>0106554433</MST>
+                        <DChi>100 Giải Phóng, Phường Đồng Tâm, Quận Hai Bà Trưng, TP. Hà Nội</DChi>
+                    </NMua>
+                    <TToan>
+                        <TgTCThue>60000000</TgTCThue>
+                        <TgTThue>3000000</TgTThue>
+                        <TgTTTBSo>63000000</TgTTTBSo>
+                        <TgTTTBChu>Sáu mươi ba triệu đồng</TgTTTBChu>
+                        <THTTLTSuat>
+                            <LTSuat>
+                                <TSuat>5%</TSuat>
+                                <ThTien>60000000</ThTien>
+                                <TThue>3000000</TThue>
+                            </LTSuat>
+                        </THTTLTSuat>
+                    </TToan>
+                </NDHDon>
+            </DLHDon>
+            <MCCQT>TCT010777889920261C26TBV0000789</MCCQT>
+        </HDon>
+    </DLieu>
 </TDiep>

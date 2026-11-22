@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <HDon>
-  <DLHDon>
-    <TTChung>
-      <SHDon>00000099</SHDon>
-      <!-- File bị cắt ngang thiếu thẻ đóng để kiểm thử trường hợp XML lỗi cú pháp malformed -->
-    <NDHDon>
-      <NBan><Ten>Cong ty Loi</Ten></NBan>
+    <DLHDon>
+        <TTChung>
+            <SHDon>0000099
+            <!-- Lỗi cú pháp: thiếu thẻ đóng SHDon và TTChung -->
+    </DLHDon>
+</HDon>

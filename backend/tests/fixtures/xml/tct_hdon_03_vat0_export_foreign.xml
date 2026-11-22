@@ -1,48 +1,41 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <HDon>
-  <DLHDon Id="data">
-    <TTChung>
-      <PBan>2.1.0</PBan>
-      <THDon>Hóa đơn giá trị gia tăng</THDon>
-      <KHMSHDon>1</KHMSHDon>
-      <KHHDon>C26TXK</KHHDon>
-      <SHDon>00000108</SHDon>
-      <NLap>2026-11-12</NLap>
-      <DVTTe>USD</DVTTe>
-      <TGia>25350.5</TGia>
-    </TTChung>
-    <NDHDon>
-      <NBan>
-        <Ten>Công ty Cổ phần Dịch Vụ Mẫu Thử Hai</Ten>
-        <MST>0312345678</MST>
-        <DChi>Số 2 Đường Thử Nghiệm, Quận 3, TP Hồ Chí Minh</DChi>
-      </NBan>
-      <NMua>
-        <Ten>Global Logistics Partners Pte. Ltd.</Ten>
-        <DChi>10 Marina Boulevard, Singapore</DChi>
-      </NMua>
-      <DSHHDVu>
-        <HHDVu>
-          <STT>1</STT>
-          <THHDVu>Dịch vụ gia công phần mềm xuất khẩu</THHDVu>
-          <ThTien>5000.00</ThTien>
-          <TSuat>0%</TSuat>
-        </HHDVu>
-      </DSHHDVu>
-      <TToan>
-        <THTTLTSuat>
-          <LTSuat>
-            <TSuat>0%</TSuat>
-            <ThTien>5000.00</ThTien>
-            <TThue>0.00</TThue>
-          </LTSuat>
-        </THTTLTSuat>
-        <TgTCThue>5000.00</TgTCThue>
-        <TgTThue>0.00</TgTThue>
-        <TgTTTBSo>5000.00</TgTTTBSo>
-        <TgTTTBChu>Năm nghìn đô la Mỹ</TgTTTBChu>
-      </TToan>
-    </NDHDon>
-  </DLHDon>
-  <MCCQT>00EXPORT0123456789ABCDEF0123456789</MCCQT>
+    <DLHDon>
+        <TTChung>
+            <PBan>2.0.0</PBan>
+            <THDon>Hóa đơn giá trị gia tăng dịch vụ xuất khẩu</THDon>
+            <KHMSHDon>1</KHMSHDon>
+            <KHHDon>1C26TDA</KHHDon>
+            <SHDon>0000305</SHDon>
+            <NLap>2026-05-18</NLap>
+            <DVTTe>USD</DVTTe>
+            <TGia>25450.00</TGia>
+            <HTTToan>Chuyển khoản quốc tế T/T</HTTToan>
+        </TTChung>
+        <NDHDon>
+            <NBan>
+                <Ten>CÔNG TY TNHH XUẤT NHẬP KHẨU ĐẠI TÂY DƯƠNG</Ten>
+                <MST>0401882233</MST>
+                <DChi>Khu bãi Cảng Tiên Sa, Phường Thọ Quang, Quận Sơn Trà, TP. Đà Nẵng</DChi>
+            </NBan>
+            <NMua>
+                <Ten>PACIFIC LOGISTICS &amp; TRADING PTE. LTD.</Ten>
+                <DChi>10 Collyer Quay, Ocean Financial Centre, Singapore 049315</DChi>
+            </NMua>
+            <TToan>
+                <TgTCThue>12500.00</TgTCThue>
+                <TgTThue>0.00</TgTThue>
+                <TgTTTBSo>12500.00</TgTTTBSo>
+                <TgTTTBChu>Twelve thousand five hundred US Dollars</TgTTTBChu>
+                <THTTLTSuat>
+                    <LTSuat>
+                        <TSuat>0%</TSuat>
+                        <ThTien>12500.00</ThTien>
+                        <TThue>0.00</TThue>
+                    </LTSuat>
+                </THTTLTSuat>
+            </TToan>
+        </NDHDon>
+    </DLHDon>
+    <MCCQT>TCT040188223320261C26TDA0000305</MCCQT>
 </HDon>

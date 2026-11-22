@@ -1,28 +1,41 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<inv:HDon xmlns:inv="urn:example:hoadon-gia">
-  <inv:DLHDon>
-    <inv:TTChung>
-      <inv:KHMSHDon>1</inv:KHMSHDon>
-      <inv:KHHDon>K26TBB</inv:KHHDon>
-      <inv:SHDon>0000007</inv:SHDon>
-      <inv:NLap>2026-11-12T09:30:00</inv:NLap>
-      <inv:DVTTe>USD</inv:DVTTe>
-      <inv:TGia>25350.5</inv:TGia>
-    </inv:TTChung>
-    <inv:NDHDon>
-      <inv:NBan>
-        <inv:Ten>Công ty Cổ phần Dịch Vụ Mẫu Thử Hai - Chi nhánh Đà Nẵng</inv:Ten>
-        <inv:MST>0312345678-001</inv:MST>
-        <inv:DChi>Số 88 Đường Bạch Đằng, Quận Hải Châu, Đà Nẵng</inv:DChi>
-      </inv:NBan>
-      <inv:NMua>
-        <inv:Ten>Example Trading Pte. Ltd.</inv:Ten>
-      </inv:NMua>
-      <inv:TToan>
-        <inv:TgTCThue>1500.00</inv:TgTCThue>
-        <inv:TgTThue>0</inv:TgTThue>
-        <inv:TgTTTBSo>1500.00</inv:TgTTTBSo>
-      </inv:TToan>
-    </inv:NDHDon>
-  </inv:DLHDon>
-</inv:HDon>
+<HDon>
+    <DLHDon>
+        <TTChung>
+            <PBan>2.0.0</PBan>
+            <THDon>Hóa đơn giá trị gia tăng</THDon>
+            <KHMSHDon>1</KHMSHDon>
+            <KHHDon>1C26TDN</KHHDon>
+            <SHDon>0000888</SHDon>
+            <NLap>2026-06-10</NLap>
+            <DVTTe>VND</DVTTe>
+            <TGia>1</TGia>
+        </TTChung>
+        <NDHDon>
+            <NBan>
+                <Ten>CHI NHÁNH CÔNG TY CP DỊCH VỤ VIỄN THÔNG SAO MAI TẠI ĐÀ NẴNG</Ten>
+                <MST>0105667788-002</MST>
+                <DChi>88 Nguyễn Văn Linh, Phường Nam Dương, Quận Hải Châu, TP. Đà Nẵng</DChi>
+            </NBan>
+            <NMua>
+                <Ten>CÔNG TY TNHH DU LỊCH VÀ KHÁCH SẠN BIỂN ĐÔNG</Ten>
+                <MST>0402113355</MST>
+                <DChi>12 Võ Nguyên Giáp, Phường Phước Mỹ, Quận Sơn Trà, TP. Đà Nẵng</DChi>
+            </NMua>
+            <TToan>
+                <TgTCThue>18000000</TgTCThue>
+                <TgTThue>1800000</TgTThue>
+                <TgTTTBSo>19800000</TgTTTBSo>
+                <TgTTTBChu>Mười chín triệu tám trăm nghìn đồng</TgTTTBChu>
+                <THTTLTSuat>
+                    <LTSuat>
+                        <TSuat>10%</TSuat>
+                        <ThTien>18000000</ThTien>
+                        <TThue>1800000</TThue>
+                    </LTSuat>
+                </THTTLTSuat>
+            </TToan>
+        </NDHDon>
+    </DLHDon>
+    <MCCQT>TCT010566778800220261C26TDN0000888</MCCQT>
+</HDon>

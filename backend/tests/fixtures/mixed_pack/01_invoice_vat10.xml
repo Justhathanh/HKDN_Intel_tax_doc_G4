@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<HDon>
+    <DLHDon>
+        <TTChung>
+            <PBan>2.0.0</PBan>
+            <THDon>Hóa đơn giá trị gia tăng</THDon>
+            <KHMSHDon>1</KHMSHDon>
+            <KHHDon>1C26TNN</KHHDon>
+            <SHDon>0000045</SHDon>
+            <NLap>2026-03-15</NLap>
+            <DVTTe>VND</DVTTe>
+            <TGia>1</TGia>
+            <HTTToan>TM/CK</HTTToan>
+        </TTChung>
+        <NDHDon>
+            <NBan>
+                <Ten>CÔNG TY CỔ PHẦN CÔNG NGHỆ THÔNG TIN BẢO AN</Ten>
+                <MST>0109988776</MST>
+                <DChi>Tầng 6, Tòa nhà Detech, Số 8 Tôn Thất Thuyết, Phường Mỹ Đình 2, Quận Nam Từ Liêm, TP. Hà Nội</DChi>
+                <SDThoai>02437951234</SDThoai>
+            </NBan>
+            <NMua>
+                <Ten>CÔNG TY TNHH PHÁT TRIỂN PHẦN MỀM THĂNG LONG</Ten>
+                <MST>0108877665</MST>
+                <DChi>Số 25 Vũ Ngọc Phan, Phường Láng Hạ, Quận Đống Đa, TP. Hà Nội</DChi>
+            </NMua>
+            <TToan>
+                <TgTCThue>45000000</TgTCThue>
+                <TgTThue>4500000</TgTThue>
+                <TgTTTBSo>49500000</TgTTTBSo>
+                <TgTTTBChu>Bốn mươi chín triệu năm trăm nghìn đồng</TgTTTBChu>
+                <THTTLTSuat>
+                    <LTSuat>
+                        <TSuat>10%</TSuat>
+                        <ThTien>45000000</ThTien>
+                        <TThue>4500000</TThue>
+                    </LTSuat>
+                </THTTLTSuat>
+            </TToan>
+        </NDHDon>
+    </DLHDon>
+    <MCCQT>TCT010998877620261C26TNN0000045</MCCQT>
+</HDon>
