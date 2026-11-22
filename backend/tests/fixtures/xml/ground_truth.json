@@ -355,9 +355,10 @@
       "expected_document_type": "INVOICE",
       "description": "Ảnh PNG scan hóa đơn bị làm mờ để test độ bền OCR đối với tài liệu khó đọc",
       "fields": {
-        "invoice_number": "0000305",
-        "invoice_series": "1C26TDA"
-      }
+        "status": "needs_review"
+      },
+      "expected_field_status": "needs_review",
+      "note": "Ảnh scan mờ/nhiễu kiểm thử OCR; kỳ vọng kết quả trích xuất là cần xem lại (needs_review)"
     },
     "invoice_vat10_retail.jpg": {
       "relative_path": "images/invoice_vat10_retail.jpg",
@@ -696,9 +697,10 @@
       "expected_document_type": "INVOICE",
       "description": "Ảnh PNG scan hóa đơn bị làm mờ để test độ bền OCR đối với tài liệu khó đọc",
       "fields": {
-        "invoice_number": "0000305",
-        "invoice_series": "1C26TDA"
-      }
+        "status": "needs_review"
+      },
+      "expected_field_status": "needs_review",
+      "note": "Ảnh scan mờ/nhiễu kiểm thử OCR; kỳ vọng kết quả trích xuất là cần xem lại (needs_review)"
     },
     "invoice_vat10_retail.jpg": {
       "relative_path": "images/invoice_vat10_retail.jpg",

@@ -13,7 +13,7 @@ Căn cứ pháp lý & kỹ thuật: **RFP 2026 – Nghị định 254/2026/NĐ-C
 1. **Dữ liệu giả lập 100% độc lập (Synthetic & Independent)**: Mọi tên công ty, mã số thuế (MST), địa chỉ, số hóa đơn trong bộ dữ liệu đều được sinh độc lập, không trùng lặp với code mẫu phát triển của Developer, phục vụ kiểm thử khách quan (Unit Test, Integration Test, Regression Test).
 2. **Bảo mật tuyệt đối**: Không sử dụng chứng từ thật hoặc dữ liệu cá nhân/khách hàng thật trên kho mã nguồn Git công khai.
 3. **Độ bao phủ đầy đủ theo Acceptance Criteria G4T-42**:
-   - XML hóa đơn điện tử chuẩn TCT.
+   - XML hóa đơn điện tử chuẩn TCT độc lập.
    - PDF điện tử có Text Layer trực tiếp (không qua OCR).
    - PDF scan thuần túy (không có Text Layer) phục vụ G4T-62 phân biệt luồng PDF.
    - Hình ảnh hóa đơn định dạng JPG và PNG (ảnh rõ nét và ảnh mờ/nhiễu).
@@ -50,7 +50,7 @@ Căn cứ pháp lý & kỹ thuật: **RFP 2026 – Nghị định 254/2026/NĐ-C
 | Tệp PDF | Label (G4T-24) | Mục đích phục vụ | Đặc tính kỹ thuật |
 |---|---|---|---|
 | `invoice_digital_text_layer.pdf` | `INVOICE` | Phục vụ `G4T-62 ST08 - PDF Text-layer Extraction` (Quốc An) | PDF sinh bằng ReportLab có font tiếng Việt (Arial), cấu trúc chuẩn 100% compliant (không lỗi Poppler), chứa luồng text trực tiếp. |
-| `invoice_scanned_no_text.pdf` | `INVOICE` | Phục vụ `G4T-62` (kiểm tra phân biệt PDF scan) & `G4T-23` (OCR) | PDF chỉ chứa ảnh raster, tuyệt đối không có text layer (`extract_text() == ""`). |
+| `invoice_scanned_no_text.pdf` | `INVOICE` | Phục vụ `G4T-62` (kiểm tra phân biệt PDF scan) & `G4T-23` (OCR) | PDF chỉ chứa ảnh raster, tuyệt đối không có text layer (`extract_text() == ""` xác nhận bằng `pypdf`). |
 | `non_tax_contract.pdf` | `UNKNOWN` | Phục vụ `G4T-24 ST11 - Document Classification` (Tường Vy) | Hợp đồng kinh tế dịch vụ tư vấn doanh nghiệp (tài liệu phi thuế). |
 | `tax_notice_cqt.pdf` | `TAX_NOTICE` | Phục vụ `G4T-24 ST11 - Document Classification` (Tường Vy) | Thông báo nộp tiền thuế và các khoản thu NSNN của Chi cục Thuế Quận Cầu Giấy. |
 | `tax_payment_receipt_nsnn.pdf` | `TAX_PAYMENT_RECEIPT` | Phục vụ `G4T-24 ST11 - Document Classification` (Tường Vy) | Giấy nộp tiền vào Ngân sách Nhà nước theo Mẫu C1-02/NS qua KBNN và Vietcombank. |
@@ -60,7 +60,7 @@ Căn cứ pháp lý & kỹ thuật: **RFP 2026 – Nghị định 254/2026/NĐ-C
 | Tệp Ảnh | Label (G4T-24) | Mục đích phục vụ | Đặc tính kỹ thuật |
 |---|---|---|---|
 | `invoice_scan_clean.png` | `INVOICE` | Phục vụ `G4T-23 ST10 - OCR Scanned Documents` (Tường Vy) | Ảnh PNG scan hóa đơn rõ nét, độ tương phản cao, kích thước 900x1200. |
-| `invoice_scan_blurred.png` | `INVOICE` | Phục vụ `G4T-23 ST10 - OCR Scanned Documents` (Tường Vy) | Ảnh PNG scan bị làm mờ (Gaussian Blur) để test độ bền của OCR đối với tài liệu scan chất lượng thấp. |
+| `invoice_scan_blurred.png` | `INVOICE` | Phục vụ `G4T-23 ST10 - OCR Scanned Documents` (Tường Vy) | Ảnh PNG scan bị làm mờ (Gaussian Blur) để test độ bền của OCR đối với tài liệu scan chất lượng thấp; kết quả kỳ vọng `needs_review`. |
 | `invoice_vat10_retail.jpg` | `INVOICE` | Phục vụ AC G4T-42 (bổ sung ảnh JPG) | Ảnh JPG hóa đơn giá trị gia tăng rõ nét. |
 
 ### 📁 D. Gói hồ sơ hỗn hợp Mixed Pack (`fixtures/mixed_pack/`)
@@ -72,19 +72,37 @@ Căn cứ pháp lý & kỹ thuật: **RFP 2026 – Nghị định 254/2026/NĐ-C
 
 ---
 
-## 3. Bảng chân lý Ground Truth (`ground_truth.json`)
+## 3. Bảng chân lý Ground Truth (`fixtures/ground_truth.json`)
 
-Tệp `ground_truth.json` (phiên bản 3.0.0) đóng vai trò là **Test Oracle** chuẩn mực của dự án:
+Tệp `ground_truth.json` (phiên bản 3.0.0 đặt tại `backend/tests/fixtures/ground_truth.json` và bản sao tại `xml/ground_truth.json`) đóng vai trò là **Test Oracle** chuẩn mực của dự án:
 - **KPI 1 - Field Accuracy**: Đối chiếu từng trường dữ liệu trích xuất (MST, số hóa đơn, ngày lập, tiền, thuế) với giá trị ground truth.
 - **KPI 2 - Whole-Document Correctness**: Kiểm tra tính toán số học chuẩn xác từng đồng bằng kiểu `Decimal` (`gross_total = net_total + tax_total`).
 - **Standardized Classification (G4T-24)**: Toàn bộ mẫu đều có nhãn phân loại chuẩn (`INVOICE`, `TAX_NOTICE`, `TAX_PAYMENT_RECEIPT`, `UNKNOWN`, `MIXED`).
+- **Needs Review**: Các trường hợp tài liệu mờ (`invoice_scan_blurred.png`) ghi nhận trạng thái kỳ vọng là `needs_review`.
 
 ---
 
-## 4. Cách chạy kiểm thử tự động
+## 4. Công cụ & Cách chạy kiểm thử tự động
 
+### Công cụ tạo dữ liệu:
+- **ReportLab**: Tạo tài liệu PDF vector chuẩn Poppler với font tiếng Việt Unicode TrueType (`Arial`).
+- **Pillow (PIL)**: Tạo và áp dụng bộ lọc làm mờ ảnh scan PNG và xuất ảnh JPG chất lượng cao.
+- **defusedxml**: Phân tích cú pháp và đảm bảo an toàn chống tấn công XXE.
+
+### Lệnh chạy kiểm thử trên các hệ điều hành:
+
+**Trên Linux / macOS:**
+```bash
+cd backend
+source .venv/bin/activate
+pytest tests/test_synthetic_dataset.py -v
+python scripts/verify_dataset.py
+```
+
+**Trên Windows (PowerShell):**
 ```powershell
 cd backend
-.\.venv\Scripts\activate
+.\.venv\Scripts\Activate.ps1
 pytest tests/test_synthetic_dataset.py -v
+python scripts/verify_dataset.py
 ```

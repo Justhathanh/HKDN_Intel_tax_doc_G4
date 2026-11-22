@@ -28,7 +28,11 @@ XML_DIR = FIXTURES_DIR / "xml"
 PDF_DIR = FIXTURES_DIR / "pdf"
 IMAGES_DIR = FIXTURES_DIR / "images"
 MIXED_DIR = FIXTURES_DIR / "mixed_pack"
-GROUND_TRUTH_PATH = XML_DIR / "ground_truth.json"
+GROUND_TRUTH_PATH = (
+    FIXTURES_DIR / "ground_truth.json"
+    if (FIXTURES_DIR / "ground_truth.json").exists()
+    else XML_DIR / "ground_truth.json"
+)
 
 ALLOWED_DOC_TYPES = {
     "INVOICE",
