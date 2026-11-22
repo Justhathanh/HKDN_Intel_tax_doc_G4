@@ -3,8 +3,10 @@ from fastapi import Request
 from fastapi.responses import JSONResponse
 
 ERRORS: dict[str, tuple[int, str]] = {
+    "duplicate_tax_id": (409, "Mã số thuế đã tồn tại trong khách hàng."),
     "unauthenticated": (401, "Bạn chưa đăng nhập."),
     "not_found": (404, "Không tìm thấy dữ liệu hoặc bạn không có quyền truy cập."),
+    "entity_selection_required": (400, "Khách hàng có nhiều pháp nhân; cần chỉ định entity_id khi tạo batch."),
     "empty_file": (400, "Chưa có file hoặc file rỗng."),
     "missing_idempotency_key": (400, "Thiếu header Idempotency-Key."),
     "invalid_idempotency_key": (400, "Idempotency-Key không hợp lệ (tối đa 128 ký tự)."),
@@ -19,6 +21,7 @@ ERRORS: dict[str, tuple[int, str]] = {
     "active_content": (422, "File chứa nội dung thực thi; file đã được cách ly."),
     "unsafe_xml": (422, "XML có cấu trúc không an toàn; file đã được cách ly."),
     "quarantined": (422, "File này đang bị cách ly."),
+    "no_tax_entity": (409, "Khách hàng chưa có pháp nhân đang hoạt động để tạo batch."),
 }
 
 
