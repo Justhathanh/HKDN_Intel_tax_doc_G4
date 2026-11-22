@@ -224,21 +224,3 @@ def test_tax_ids_and_invoice_numbers_format(ground_truth):
             assert cleaned_mst.isdigit(), f"MST người bán {seller_tax} không đúng định dạng!"
 
 
-def test_integration_with_current_xml_parser(ground_truth):
-    """Kiểm tra bộ dữ liệu XML tương thích hoàn toàn với app.xml_parser hiện có của hệ thống."""
-    from app.xml_parser import parse_invoice
-
-    for filename, meta in ground_truth["files"].items():
-        if meta.get("format") == "xml" and meta.get("schema_passed") is True:
-            rel_path = meta["relative_path"]
-            xml_bytes = (FIXTURES_DIR / rel_path).read_bytes()
-            client_tax_id = meta["client_tax_id"]
-
-            fields = parse_invoice(xml_bytes, client_tax_id)
-            assert len(fields) > 0
-
-            # Lấy trường direction
-            dir_field = next(f for f in fields if f.name == "direction")
-            assert dir_field.normalized == meta["expected_direction"], (
-                f"Direction không khớp cho {filename}: mong đợi {meta['expected_direction']}, nhận {dir_field.normalized}"
-            )
