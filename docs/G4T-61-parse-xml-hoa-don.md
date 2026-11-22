@@ -56,6 +56,14 @@ Dataset `3.1.0` · parser `0.3.0` · mapping `tct-hdon-v1`
 | `tct_hdon_07_missing_optional.xml` | 10/10 | ✔ | ✔ | — | ✔ |
 | `malformed_invoice.xml` | lỗi kỳ vọng `xml_malformed`, nhận `xml_malformed` | | | | ✔ |
 
+**Phạm vi của con số:** 7 hóa đơn XML tổng hợp (1 biến thể) chỉ là **golden test** để chống lỗi lùi, **không phải KPI
+nghiệm thu**. RFP AT 02 yêu cầu ≥ 300 XML (≥ 100 mỗi biến thể, ≥ 50 mỗi hướng) và độ chính xác trường quan trọng
+≥ 99,5%; ngưỡng và tập benchmark cần PO chốt trước khi báo KPI.
+
+**Cách tái lập** (mọi con số trong tài liệu và PR đều chạy bằng các lệnh này, trên commit ghi kèm ở PR #13):
+`cd backend && python -m scripts.evaluate_xml_dataset` (báo cáo hai lớp) và
+`TEST_DATABASE_URL=postgresql+psycopg://…/<db> pytest -q` (PostgreSQL 16; bỏ biến này thì chạy SQLite).
+
 XML là định dạng có cấu trúc, đọc theo quy tắc cố định nên **không có điểm tin cậy** kiểu mô hình: cột `confidence`
 để trống (DAT 03 ghi "confidence if available"). Điểm tin cậy sẽ có ở OCR (G4T-23).
 
@@ -179,6 +187,7 @@ không có thì lấy MST khách hàng.
 | `no_field_conflicts` | Không có trường xuất hiện nhiều lần | — |
 | `totals_consistent` | Tiền trước thuế + tiền thuế = tổng thanh toán (Decimal, EXT 07) | thiếu một trong ba giá trị (không suy ra giá trị thiếu, EXT 06) |
 | `tax_breakdown_consistent` | Tổng thuế theo từng thuế suất = tổng tiền thuế | không có bảng thuế suất |
+| `related_invoice_date_not_after_issue` | Hóa đơn thay thế/điều chỉnh: ngày của hóa đơn gốc được tham chiếu không sau ngày lập | không có tham chiếu hóa đơn liên quan |
 | `direction_determined` | Xác định được hóa đơn đầu vào hay đầu ra | — |
 
 **Chưa làm (cần nhóm chốt):** worker chưa chuyển trạng thái *tài liệu* (`received → processing → needs_review`,

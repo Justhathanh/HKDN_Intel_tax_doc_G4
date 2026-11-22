@@ -134,3 +134,59 @@ def test_worker_does_not_report_success_for_unsupported_pdf(api):
         job = db.get(ProcessingJob, job_id)
         assert (job.status, job.error_code) == (JobStatus.DEAD_LETTER, "unsupported_document")
         assert db.scalar(select(ExtractionRun).where(ExtractionRun.job_id == job.id)) is None
+
+
+# ---------- Trường thiếu, trùng, ngày: sửa MỘT giá trị trong mẫu chính thức ----------
+
+def _parse_mutated(name: str, old: str, new: str):
+    meta = GROUND_TRUTH[name]
+    data = _official(name).decode()
+    assert old in data, old
+    return parse_invoice_xml(data.replace(old, new, 1).encode(), meta["client_tax_id"])
+
+
+def test_duplicate_field_is_conflict_on_both_levels():
+    name = "tct_hdon_01_vat10_standard.xml"
+    number = GROUND_TRUTH[name]["fields"]["invoice_number"]
+    result = _parse_mutated(name, f"<SHDon>{number}</SHDon>", f"<SHDon>{number}</SHDon><SHDon>{number}9</SHDon>")
+    field = result.field("invoice_number")
+    assert (field.field_status, field.normalized_value) == ("conflict", None)       # lớp trường: không tự chọn
+    findings = {f["rule_code"]: f["status"] for f in document_findings(result)}
+    assert findings["no_field_conflicts"] == "failed"                               # lớp tài liệu
+
+
+def test_missing_required_field_is_missing_not_zero_on_both_levels():
+    name = "tct_hdon_01_vat10_standard.xml"
+    gross = GROUND_TRUTH[name]["fields"]["gross_total"]
+    result = _parse_mutated(name, f"<TgTTTBSo>{gross}</TgTTTBSo>", "<TgTTTBSo></TgTTTBSo>")
+    field = result.field("gross_total")
+    assert (field.field_status, field.raw_value, field.normalized_value) == ("missing", None, None)
+    findings = {f["rule_code"]: f["status"] for f in document_findings(result)}
+    assert findings["required_fields_present"] == "failed"
+    assert findings["totals_consistent"] == "skipped"                                # không suy ra giá trị thiếu
+
+
+def test_leading_zeros_and_exact_decimal_from_official_samples():
+    meta = GROUND_TRUTH["tct_hdon_03_vat0_export_foreign.xml"]
+    result = parse_invoice_xml(_official("tct_hdon_03_vat0_export_foreign.xml"), meta["client_tax_id"])
+    number = result.field("invoice_number").normalized_value
+    assert number == meta["fields"]["invoice_number"] and number.startswith("0")
+    assert result.field("exchange_rate").normalized_value == meta["fields"]["exchange_rate"]
+    assert result.mapping_version == "tct-hdon-v1"
+    assert result.field("invoice_number").xml_path.endswith("/TTChung/SHDon")
+
+
+def test_replacement_invoice_date_rule():
+    """Ca "ngày sai dù từng trường đúng": hóa đơn thay thế mang ngày của hóa đơn gốc SAU ngày lập của chính nó."""
+    name = "tct_hdon_05_replacement.xml"
+    fields = GROUND_TRUTH[name]["fields"]
+    ok = {f["rule_code"]: f["status"] for f in document_findings(
+        parse_invoice_xml(_official(name), GROUND_TRUTH[name]["client_tax_id"]))}
+    assert ok["related_invoice_date_not_after_issue"] == "passed"
+
+    later = "2099-12-31"
+    result = _parse_mutated(name, f"<NLHDCLQuan>{fields['related_invoice_date']}</NLHDCLQuan>",
+                            f"<NLHDCLQuan>{later}</NLHDCLQuan>")
+    assert result.field("related_invoice_date").field_status == "present"           # lớp trường: hợp lệ
+    bad = {f["rule_code"]: f["status"] for f in document_findings(result)}
+    assert bad["related_invoice_date_not_after_issue"] == "failed"                  # lớp tài liệu: sai

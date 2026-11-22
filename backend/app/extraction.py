@@ -86,6 +86,16 @@ def document_findings(result: XmlParseResult) -> list[dict]:
         findings.append({"rule_code": "tax_breakdown_consistent", "status": "passed" if total == tax else "failed",
                          "details": {"sum_breakdown": str(total), "tax_total": str(tax)}})
 
+    # Ngày: hóa đơn thay thế/điều chỉnh không thể có ngày lập trước hóa đơn gốc mà nó tham chiếu (EXT 03, VN 02).
+    issued, related = by_name["issue_date"].normalized_value, by_name["related_invoice_date"].normalized_value
+    if issued is None or related is None:
+        findings.append({"rule_code": "related_invoice_date_not_after_issue", "status": "skipped",
+                         "details": {"reason": "không có tham chiếu hóa đơn liên quan hoặc thiếu ngày"}})
+    else:  # đã chuẩn hóa YYYY-MM-DD nên so chuỗi là so ngày
+        findings.append({"rule_code": "related_invoice_date_not_after_issue",
+                         "status": "passed" if related <= issued else "failed",
+                         "details": {"issue_date": issued, "related_invoice_date": related}})
+
     direction = by_name["direction"]
     findings.append({"rule_code": "direction_determined",
                      "status": "passed" if direction.field_status == "present" else "failed",
