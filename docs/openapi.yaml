@@ -16,6 +16,45 @@ paths:
                 additionalProperties: true
                 type: object
                 title: Response Health Health Get
+  /retry-policy:
+    get:
+      summary: Get Retry Policy
+      operationId: get_retry_policy_retry_policy_get
+      parameters:
+      - name: x-user
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: X-User
+      - name: x-client-ids
+        in: header
+        required: false
+        schema:
+          type: string
+          default: ''
+          title: X-Client-Ids
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RetryPolicyOut'
+        '401':
+          description: Chưa xác thực
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
   /clients:
     post:
       summary: Create Client
@@ -386,6 +425,69 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+  /jobs/dead-letter:
+    get:
+      summary: List Dead Letter
+      operationId: list_dead_letter_jobs_dead_letter_get
+      parameters:
+      - name: unresolved_only
+        in: query
+        required: false
+        schema:
+          type: boolean
+          default: true
+          title: Unresolved Only
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 200
+          minimum: 1
+          default: 50
+          title: Limit
+      - name: offset
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 0
+          default: 0
+          title: Offset
+      - name: x-user
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: X-User
+      - name: x-client-ids
+        in: header
+        required: false
+        schema:
+          type: string
+          default: ''
+          title: X-Client-Ids
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeadLetterListOut'
+        '401':
+          description: Chưa xác thực
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
   /jobs/{job_id}:
     get:
       summary: Get Job
@@ -439,6 +541,69 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+  /jobs/{job_id}/retry:
+    post:
+      summary: Retry Job
+      operationId: retry_job_jobs__job_id__retry_post
+      parameters:
+      - name: job_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Job Id
+      - name: x-user
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: X-User
+      - name: x-client-ids
+        in: header
+        required: false
+        schema:
+          type: string
+          default: ''
+          title: X-Client-Ids
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobOut'
+        '200':
+          description: Job đang chờ hoặc đang chạy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobOut'
+        '401':
+          description: Chưa xác thực
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '404':
+          description: Không tìm thấy hoặc không có quyền
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '409':
+          description: Job không ở trạng thái có thể thử lại
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '422':
+          description: File không xử lý được
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
   /documents/{document_id}/jobs:
     get:
       summary: List Document Jobs
@@ -582,6 +747,21 @@ components:
       - name
       - tax_id
       title: ClientOut
+    DeadLetterListOut:
+      properties:
+        total:
+          type: integer
+          title: Total
+        items:
+          items:
+            $ref: '#/components/schemas/JobOut'
+          type: array
+          title: Items
+      type: object
+      required:
+      - total
+      - items
+      title: DeadLetterListOut
     DocumentOut:
       properties:
         document_id:
@@ -923,6 +1103,39 @@ components:
       - uploaded_by
       - received_at
       title: ManifestItem
+    RetryPolicyOut:
+      properties:
+        default_max_attempts:
+          type: integer
+          title: Default Max Attempts
+        backoff_base_seconds:
+          type: integer
+          title: Backoff Base Seconds
+        backoff_max_seconds:
+          type: integer
+          title: Backoff Max Seconds
+        default_lease_seconds:
+          type: integer
+          title: Default Lease Seconds
+        retryable_errors:
+          items:
+            type: string
+          type: array
+          title: Retryable Errors
+        non_retryable_errors:
+          items:
+            type: string
+          type: array
+          title: Non Retryable Errors
+      type: object
+      required:
+      - default_max_attempts
+      - backoff_base_seconds
+      - backoff_max_seconds
+      - default_lease_seconds
+      - retryable_errors
+      - non_retryable_errors
+      title: RetryPolicyOut
     TaxEntityIn:
       properties:
         tax_id:

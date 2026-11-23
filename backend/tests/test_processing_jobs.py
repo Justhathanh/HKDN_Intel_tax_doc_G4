@@ -282,3 +282,16 @@ def test_job_and_retry_carry_document_entity(api):
         retry = jobs.fail(db, claimed, "ocr_unavailable", now=T0 + timedelta(hours=1))
         db.commit()
         assert retry.entity_id == doc.entity_id
+
+
+def test_manual_retry_from_dead_letter_keeps_entity(api):
+    """Lần thử lại thủ công từ dead_letter (PR #21, G4T-74/75) cũng mang entity_id của tài liệu."""
+    doc_id = upload(api)
+    with SessionLocal() as db:
+        doc = db.get(Document, doc_id)
+        job = jobs.enqueue(db, doc)
+        claimed = jobs.claim_next(db, "w", now=T0 + timedelta(hours=1))
+        jobs.fail(db, claimed, "parser_error", now=T0 + timedelta(hours=1))
+        retry, created = jobs.retry_dead_letter(db, claimed)
+        db.commit()
+        assert created and retry.entity_id == doc.entity_id == job.entity_id
