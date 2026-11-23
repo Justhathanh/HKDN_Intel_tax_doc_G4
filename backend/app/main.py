@@ -3,7 +3,7 @@ import unicodedata
 from datetime import datetime, timezone
 from typing import Annotated
 
-from fastapi import Depends, FastAPI, File, Header, UploadFile
+from fastapi import Depends, FastAPI, File, Header, Query, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sqlalchemy import func, select
@@ -21,6 +21,7 @@ from .schemas import (
     BatchOut,
     ClientIn,
     ClientOut,
+    DeadLetterListOut,
     DocumentOut,
     DocumentReceipt,
     ErrorBody,
@@ -28,6 +29,7 @@ from .schemas import (
     JobList,
     JobOut,
     Manifest,
+    RetryPolicyOut,
     TaxEntityIn,
     TaxEntityOut,
 )
@@ -170,6 +172,11 @@ def _accept(db: Session, batch: Batch, user: User, key: str, name: str, data: by
 @app.get("/health")
 def health() -> dict:
     return {"status": "ok"}
+
+
+@app.get("/retry-policy", response_model=RetryPolicyOut, responses=_errors(401))
+def get_retry_policy(_: User = Depends(current_user)) -> RetryPolicyOut:
+    return RetryPolicyOut(**jobs.retry_policy())
 
 
 @app.post("/clients", status_code=201, response_model=ClientOut, responses=_errors(401))
@@ -377,6 +384,20 @@ def _job_out(job: ProcessingJob) -> JobOut:
         duration_ms=_duration_ms(job), error=error)
 
 
+@app.get("/jobs/dead-letter", response_model=DeadLetterListOut, responses=_errors(401))
+def list_dead_letter(
+    unresolved_only: bool = True,
+    limit: Annotated[int, Query(ge=1, le=200)] = 50,
+    offset: Annotated[int, Query(ge=0)] = 0,
+    db: Session = Depends(get_db),
+    user: User = Depends(current_user),
+):
+    rows, total = jobs.list_dead_letter_jobs(
+        db, user.client_ids, unresolved_only=unresolved_only, limit=limit, offset=offset
+    )
+    return DeadLetterListOut(total=total, items=[_job_out(j) for j in rows])
+
+
 @app.get("/jobs/{job_id}", response_model=JobOut, responses=_errors(401, 404))
 def get_job(job_id: str, db: Session = Depends(get_db), user: User = Depends(current_user)):
     """Trạng thái một lần thử xử lý. Job của khách hàng khác trả 404 như không tồn tại."""
@@ -385,6 +406,40 @@ def get_job(job_id: str, db: Session = Depends(get_db), user: User = Depends(cur
         raise ApiError("not_found")
     require_scope(user, job.client_id)
     return _job_out(job)
+
+
+@app.post(
+    "/jobs/{job_id}/retry",
+    status_code=201,
+    response_model=JobOut,
+    responses={
+        200: {"model": JobOut, "description": "Job đang chờ hoặc đang chạy"},
+        **_errors(401, 404),
+        409: {"model": ErrorBody, "description": "Job không ở trạng thái có thể thử lại"},
+        **_errors(422),
+    },
+)
+def retry_job(job_id: str, db: Session = Depends(get_db), user: User = Depends(current_user)):
+    # TODO (SEC 01): Bổ sung kiểm tra phân quyền vai trò (chỉ accountant_lead / admin được retry thủ công) theo G4T-68 mục 9.
+    job = db.get(ProcessingJob, job_id)
+    if job is None:
+        raise ApiError("not_found")
+    require_scope(user, job.client_id)
+    try:
+        retried, created = jobs.retry_dead_letter(db, job)
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        existing = jobs.active_job(db, job.document_id, job.job_type)
+        if existing is None:
+            raise
+        retried, created = existing, False
+    except jobs.IllegalJobTransition as exc:
+        raise ApiError("job_not_retryable", document_id=job.document_id) from exc
+    except jobs.NotProcessable as exc:
+        raise ApiError("quarantined", document_id=job.document_id) from exc
+
+    return JSONResponse(status_code=201 if created else 200, content=_job_out(retried).model_dump())
 
 
 @app.get("/documents/{document_id}/jobs", response_model=JobList, responses=_errors(401, 404))

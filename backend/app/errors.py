@@ -11,6 +11,7 @@ ERRORS: dict[str, tuple[int, str]] = {
     "missing_idempotency_key": (400, "Thiếu header Idempotency-Key."),
     "invalid_idempotency_key": (400, "Idempotency-Key không hợp lệ (tối đa 128 ký tự)."),
     "idempotency_key_conflict": (409, "Idempotency-Key này đã được dùng cho một file khác."),
+    "job_not_retryable": (409, "Chỉ có thể thử lại thủ công các job đang ở trạng thái dead_letter."),
     "file_too_large": (413, "File vượt quá giới hạn 20 MiB."),
     "unsupported_format": (415, "Định dạng không được hỗ trợ. Chỉ nhận PDF, JPG, PNG, XML."),
     "archive_not_supported": (415, "Không nhận file nén."),
