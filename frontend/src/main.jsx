@@ -20,18 +20,24 @@ const LABEL = {
   superseded: "Đã thay thế",
 };
 
+ 
 const ERROR_LABEL = {
   file_too_large: "Tệp vượt quá dung lượng tối đa 20 MB.",
   too_many_pages: "Tệp PDF vượt quá giới hạn 30 trang.",
   unsupported_format: "Định dạng tệp không được hỗ trợ.",
-  unsupported_file_type: "Định dạng tệp không được hỗ trợ.",
-  invalid_file_type: "Loại tệp không hợp lệ.",
-  invalid_format: "Định dạng tệp không hợp lệ.",
-  active_content: "Tệp chứa nội dung có thể không an toàn.",
-  duplicate: "Tài liệu đã tồn tại trong hệ thống.",
-  invalid_pdf: "Tệp PDF không hợp lệ hoặc bị hỏng.",
-  invalid_xml: "Tệp XML không hợp lệ.",
+  extension_content_mismatch: "Đuôi tệp không khớp với nội dung thực tế.",
+  corrupt_file: "Tệp bị hỏng hoặc không thể đọc.",
+  password_protected: "Tệp PDF có mật khẩu. Vui lòng bỏ mật khẩu rồi thử lại.",
+  unsafe_xml: "Tệp XML không an toàn.",
+  empty_file: "Tệp rỗng. Vui lòng chọn tệp khác.",
+  archive_not_supported: "Không hỗ trợ tệp nén.",
+  quarantined: "Tệp đã bị cách ly để kiểm tra.",
+  idempotency_key_conflict: "Yêu cầu tải lên bị trùng khóa. Vui lòng thử lại.",
+  not_found: "Không tìm thấy dữ liệu yêu cầu.",
+  unauthenticated: "Bạn chưa được xác thực.",
+  same_hash_in_client: "Tệp này đã tồn tại trong khách hàng hiện tại.",
 };
+
 
 const OUTCOME_LABEL = {
   accepted: "Đã tiếp nhận",
@@ -65,15 +71,22 @@ function translateError(value) {
   return "Đã xảy ra lỗi không xác định.";
 }
 
+
 function getErrorMessage(body, status) {
+  if (body?.error_code) {
+    return ERROR_LABEL[body.error_code] ??
+      body?.message ??
+      body.error_code;
+  }
+
   const detail = body?.detail;
   const value =
     body?.reason ??
-    body?.error_code ??
     detail ??
     body?.message;
 
   if (value) return translateError(value);
+
 
   if (status === 413) {
     return "Tệp vượt quá dung lượng cho phép.";
