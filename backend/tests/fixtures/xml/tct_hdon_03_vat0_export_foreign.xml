@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<HDon>
+    <DLHDon>
+        <TTChung>
+            <PBan>2.0.0</PBan>
+            <THDon>Hóa đơn giá trị gia tăng dịch vụ xuất khẩu</THDon>
+            <KHMSHDon>1</KHMSHDon>
+            <KHHDon>1C26TDA</KHHDon>
+            <SHDon>0000305</SHDon>
+            <NLap>2026-05-18</NLap>
+            <DVTTe>USD</DVTTe>
+            <TGia>25450.00</TGia>
+            <HTTToan>Chuyển khoản quốc tế T/T</HTTToan>
+        </TTChung>
+        <NDHDon>
+            <NBan>
+                <Ten>CÔNG TY TNHH XUẤT NHẬP KHẨU THỬ NGHIỆM ĐẠI TÂY DƯƠNG</Ten>
+                <MST>0401882233</MST>
+                <DChi>Số 789 Đường Cảng Thử Nghiệm Gamma, Phường Giả Định 3, Quận Kịch Bản, TP. Đà Nẵng</DChi>
+            </NBan>
+            <NMua>
+                <Ten>SYNTHETIC GLOBAL LOGISTICS PTE. LTD.</Ten>
+                <DChi>Tòa nhà Giả Lập Alpha, Số 99 Đường Thử Nghiệm, Khu Tài Chính Giả Định, Singapore 999999</DChi>
+            </NMua>
+            <TToan>
+                <TgTCThue>12500.00</TgTCThue>
+                <TgTThue>0.00</TgTThue>
+                <TgTTTBSo>12500.00</TgTTTBSo>
+                <TgTTTBChu>Twelve thousand five hundred US Dollars</TgTTTBChu>
+                <THTTLTSuat>
+                    <LTSuat>
+                        <TSuat>0%</TSuat>
+                        <ThTien>12500.00</ThTien>
+                        <TThue>0.00</TThue>
+                    </LTSuat>
+                </THTTLTSuat>
+            </TToan>
+        </NDHDon>
+    </DLHDon>
+    <MCCQT>TCT040188223320261C26TDA0000305</MCCQT>
+</HDon>

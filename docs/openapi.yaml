@@ -100,6 +100,69 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+  /clients/{client_id}/entities:
+    post:
+      summary: Create Tax Entity
+      operationId: create_tax_entity_clients__client_id__entities_post
+      parameters:
+      - name: client_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Client Id
+      - name: x-user
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: X-User
+      - name: x-client-ids
+        in: header
+        required: false
+        schema:
+          type: string
+          default: ''
+          title: X-Client-Ids
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaxEntityIn'
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaxEntityOut'
+        '401':
+          description: Chưa xác thực
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '404':
+          description: Không tìm thấy hoặc không có quyền
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '409':
+          description: Mã số thuế đã tồn tại trong khách hàng.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
   /batches:
     post:
       summary: Create Batch
@@ -133,6 +196,13 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/BatchOut'
+        '400':
+          description: Khách hàng có nhiều pháp nhân; cần chỉ định entity_id khi tạo
+            batch.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
         '401':
           description: Chưa xác thực
           content:
@@ -141,6 +211,12 @@ paths:
                 $ref: '#/components/schemas/ErrorBody'
         '404':
           description: Không tìm thấy hoặc không có quyền
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '409':
+          description: Khách hàng chưa có pháp nhân đang hoạt động để tạo batch.
           content:
             application/json:
               schema:
@@ -598,6 +674,11 @@ components:
         engagement_id:
           type: string
           title: Engagement Id
+        entity_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Entity Id
       type: object
       required:
       - client_id
@@ -614,6 +695,11 @@ components:
         engagement_id:
           type: string
           title: Engagement Id
+        entity_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Entity Id
       type: object
       required:
       - id
@@ -1050,6 +1136,64 @@ components:
       - retryable_errors
       - non_retryable_errors
       title: RetryPolicyOut
+    TaxEntityIn:
+      properties:
+        tax_id:
+          type: string
+          title: Tax Id
+        legal_name:
+          type: string
+          title: Legal Name
+        address:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Address
+        representative_name:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Representative Name
+      type: object
+      required:
+      - tax_id
+      - legal_name
+      title: TaxEntityIn
+    TaxEntityOut:
+      properties:
+        id:
+          type: string
+          title: Id
+        client_id:
+          type: string
+          title: Client Id
+        tax_id:
+          type: string
+          title: Tax Id
+        legal_name:
+          type: string
+          title: Legal Name
+        address:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Address
+        representative_name:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Representative Name
+        is_active:
+          type: boolean
+          title: Is Active
+      type: object
+      required:
+      - id
+      - client_id
+      - tax_id
+      - legal_name
+      - is_active
+      title: TaxEntityOut
     ValidationError:
       properties:
         loc:
