@@ -2,6 +2,11 @@
 import React, { useState } from "react";
 import { createRoot } from "react-dom/client";
 import "./app.css";
+import {
+  uploadDocument,
+  validateFile,
+  messageFor,
+} from "./uploadDocument";
 
 const API = import.meta.env.VITE_API ?? "http://localhost:8000";
 
@@ -188,138 +193,83 @@ function App() {
     setItems(manifest.items ?? []);
   }
 
-  function selectFiles(e) {
-    setError("");
-    setMessage("");
+ function selectFiles(e) {
+     setError("");
+     setMessage("");
 
-    const selected = Array.from(e.target.files ?? []);
-    const valid = [];
-    const invalid = [];
+  const selected = Array.from(e.target.files ?? []);
+  const valid = [];
+  const invalid = [];
 
-    selected.forEach((file) => {
-      const ext = file.name.split(".").pop().toLowerCase();
+  selected.forEach((file) => {
+    const errorCode = validateFile(file);
 
-      if (!FORMATS.includes(ext)) {
-        invalid.push(
-          `${file.name}: Định dạng không được hỗ trợ.`
-        );
-      } else if (file.size > MAX_SIZE) {
-        invalid.push(
-          `${file.name}: Tệp vượt quá 20 MB.`
-        );
-      } else {
-        valid.push({
-          id: crypto.randomUUID(),
-          file,
-          idempotencyKey: crypto.randomUUID(),
-        });
-      }
-    });
-
-    setFiles((previous) => [...previous, ...valid]);
-
-    if (invalid.length) {
-      setError(invalid.join(" | "));
+    if (errorCode) {
+      invalid.push(
+        `${file.name}: ${messageFor(errorCode, "File không hợp lệ.")}`
+      );
+    } else {
+      valid.push(file);
     }
+  });
 
-    e.target.value = "";
-  }
+  setFiles(valid);
 
-  function removeFile(id) {
-    setFiles((previous) =>
-      previous.filter((entry) => entry.id !== id)
-    );
+  if (invalid.length) {
+    setError(invalid.join(" | "));
   }
+}
 
   async function upload() {
-    if (!session || !files.length || uploading) return;
+  if (!session || !files.length || uploading) return;
 
-    setUploading(true);
-    setError("");
-    setMessage("");
+  setUploading(true);
+  setError("");
+  setMessage("");
 
-    const failures = [];
-    const completedIds = [];
-    let success = 0;
-    let duplicates = 0;
+  const failures = [];
+  let success = 0;
 
-    try {
-      for (const entry of files) {
-        const body = new FormData();
-        body.append("file", entry.file);
-
-        try {
-          const result = await call(
-            `/batches/${session.batchId}/documents`,
-            {
-              method: "POST",
-              headers: {
-                ...headers(session.clientId),
-                "Idempotency-Key": entry.idempotencyKey,
-              },
-              body,
-            }
-          );
-
-          completedIds.push(entry.id);
-
-          if (
-            result?.duplicate === true ||
-            result?.outcome === "duplicate"
-          ) {
-            duplicates++;
-          } else {
-            success++;
-          }
-        } catch (err) {
-          failures.push(
-            `${entry.file.name}: ${err.message}`
-          );
-        }
-      }
-
-      if (success || duplicates) {
-        const parts = [];
-
-        if (success) {
-          parts.push(`${success} tài liệu mới`);
-        }
-
-        if (duplicates) {
-          parts.push(`${duplicates} tài liệu đã tồn tại`);
-        }
-
-        setMessage(`Đã xử lý: ${parts.join(", ")}.`);
-      }
-
-      if (failures.length) {
-        setError(failures.join(" | "));
-      }
-
-      // Chỉ xóa file gửi thành công.
-      // Giữ file lỗi để người dùng thử lại.
-      setFiles((previous) =>
-        previous.filter(
-          (entry) => !completedIds.includes(entry.id)
-        )
-      );
-
+  try {
+    for (const file of files) {
       try {
-        await refresh(session);
+        await uploadDocument(
+          session.batchId,
+          file,
+          crypto.randomUUID(),
+          headers(session.clientId),
+        );
+
+        success++;
       } catch (err) {
-        setError((previous) =>
-          [
-            previous,
-            `Không tải được danh sách: ${err.message}`,
-          ]
-            .filter(Boolean)
-            .join(" | ")
+        failures.push(
+          `${file.name}: ${err.message ?? "Upload thất bại"}`
         );
       }
-    } finally {
-      setUploading(false);
     }
+
+    if (success) {
+      setMessage(`Đã gửi thành công ${success} tài liệu.`);
+      setFiles([]);
+    }
+
+    if (failures.length) {
+      setError(failures.join(" | "));
+    }
+
+    try {
+      await refresh(session);
+    } catch (err) {
+      setError((prev) =>
+        [prev, `Không tải được danh sách: ${err.message}`]
+          .filter(Boolean)
+          .join(" | ")
+      );
+    }
+  } finally {
+    setUploading(false);
   }
+}
 
   return (
     <main>

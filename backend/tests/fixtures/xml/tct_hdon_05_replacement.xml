@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<HDon>
+    <DLHDon>
+        <TTChung>
+            <PBan>2.0.0</PBan>
+            <THDon>Hóa đơn giá trị gia tăng thay thế</THDon>
+            <KHMSHDon>1</KHMSHDon>
+            <KHHDon>1C26THG</KHHDon>
+            <SHDon>0002560</SHDon>
+            <NLap>2026-07-25</NLap>
+            <DVTTe>VND</DVTTe>
+            <TGia>1</TGia>
+            <TTHDLQuan>
+                <TCHDon>1</TCHDon>
+                <KHMSHDCLQuan>1</KHMSHDCLQuan>
+                <KHHDCLQuan>1C26THG</KHHDCLQuan>
+                <SHDCLQuan>0002100</SHDCLQuan>
+                <NLHDCLQuan>2026-07-10</NLHDCLQuan>
+            </TTHDLQuan>
+        </TTChung>
+        <NDHDon>
+            <NBan>
+                <Ten>CÔNG TY TNHH PHẦN MỀM THỬ NGHIỆM HOÀNG GIA</Ten>
+                <MST>0201993344</MST>
+                <DChi>Số 101 Phố Thử Nghiệm Delta, Phường Giả Định 4, Quận Kịch Bản, TP. Hải Phòng</DChi>
+            </NBan>
+            <NMua>
+                <Ten>CÔNG TY CỔ PHẦN LOGISTICS MẪU THỬ HẢI PHÒNG</Ten>
+                <MST>0201889900</MST>
+                <DChi>Số 15 Đường Cảng Giả Định, Quận Thử Nghiệm, TP. Hải Phòng</DChi>
+            </NMua>
+            <TToan>
+                <TgTCThue>35000000</TgTCThue>
+                <TgTThue>3500000</TgTThue>
+                <TgTTTBSo>38500000</TgTTTBSo>
+                <TgTTTBChu>Ba mươi tám triệu năm trăm nghìn đồng</TgTTTBChu>
+                <THTTLTSuat>
+                    <LTSuat>
+                        <TSuat>10%</TSuat>
+                        <ThTien>35000000</ThTien>
+                        <TThue>3500000</TThue>
+                    </LTSuat>
+                </THTTLTSuat>
+            </TToan>
+        </NDHDon>
+    </DLHDon>
+    <MCCQT>TCT020199334420261C26THG0002560</MCCQT>
+</HDon>

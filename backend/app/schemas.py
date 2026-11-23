@@ -9,6 +9,7 @@ class ClientIn(BaseModel):
 class BatchIn(BaseModel):
     client_id: str
     engagement_id: str
+    entity_id: str | None = None
 
 
 class ClientOut(BaseModel):
@@ -21,6 +22,7 @@ class BatchOut(BaseModel):
     id: str
     client_id: str
     engagement_id: str
+    entity_id: str | None = None
 
 
 class ErrorBody(BaseModel):
@@ -77,3 +79,56 @@ class Manifest(BaseModel):
     submissions: int
     by_outcome: dict[str, int]
     items: list[ManifestItem]
+
+
+class TaxEntityIn(BaseModel):
+    tax_id: str
+    legal_name: str
+    address: str | None = None
+    representative_name: str | None = None
+
+
+class TaxEntityOut(BaseModel):
+    id: str
+    client_id: str
+    tax_id: str
+    legal_name: str
+    address: str | None = None
+    representative_name: str | None = None
+    is_active: bool
+
+
+class JobErrorOut(BaseModel):
+    """Lỗi của một lần thử; chỉ gồm mã và câu thông báo trong danh sách cho phép (SEC 04)."""
+
+    code: str
+    message: str
+    retryable: bool
+
+
+class JobOut(BaseModel):
+    """Trạng thái một lần thử xử lý (G4T-68). Không trả locked_by, lease, input_sha256: đó là dữ liệu nội bộ."""
+
+    job_id: str
+    document_id: str
+    job_type: str
+    status: str
+    display_status: str
+    will_retry: bool
+    attempt_no: int
+    max_attempts: int
+    retry_of_job_id: str | None
+    correlation_id: str
+    processor_version: str | None
+    created_at: str
+    next_attempt_at: str
+    started_at: str | None
+    finished_at: str | None
+    duration_ms: int | None
+    error: JobErrorOut | None
+
+
+class JobList(BaseModel):
+    document_id: str
+    latest: JobOut | None
+    items: list[JobOut]

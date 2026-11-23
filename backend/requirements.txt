@@ -10,3 +10,4 @@ httpx==0.27.2
 alembic==1.13.3
 Pillow==10.4.0
 PyYAML==6.0.2
+reportlab==5.1.0

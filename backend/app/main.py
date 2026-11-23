@@ -10,15 +10,29 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from . import safety
+from . import jobs, safety
 from .auth import User, current_user, require_scope
 from .db import get_db
 from .errors import ApiError, api_error_handler
-from .models import Batch, Client, Document, StateEvent, Submission
-from .schemas import BatchIn, BatchOut, ClientIn, ClientOut, DocumentOut, DocumentReceipt, ErrorBody, Manifest
+from .models import Batch, Client, Document, ProcessingJob, StateEvent, Submission
+from .domain_models import TaxEntity
+from .schemas import (
+    BatchIn,
+    BatchOut,
+    ClientIn,
+    ClientOut,
+    DocumentOut,
+    DocumentReceipt,
+    ErrorBody,
+    JobErrorOut,
+    JobList,
+    JobOut,
+    Manifest,
+    TaxEntityIn,
+    TaxEntityOut,
+)
 from .states import State
 from .storage import LocalWriteOnceStore, OriginalExists
-
 app = FastAPI(title="THTax Intelligent Tax Document Ingestion", version="0.2.0")
 app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:5173"], allow_methods=["*"], allow_headers=["*"])
 app.add_exception_handler(ApiError, api_error_handler)
@@ -32,8 +46,15 @@ _ERROR_DESCRIPTIONS = {
 }
 
 
-def _errors(*codes: int) -> dict:
-    return {c: {"model": ErrorBody, "description": _ERROR_DESCRIPTIONS[c]} for c in codes}
+def _errors(*codes: int, overrides: dict[int, str] | None = None) -> dict:
+    overrides = overrides or {}
+    return {
+        c: {
+            "model": ErrorBody,
+            "description": overrides.get(c, _ERROR_DESCRIPTIONS[c]),
+        }
+        for c in codes
+    }
 
 
 UPLOAD_ERRORS = _errors(400, 401, 404, 409, 413, 415, 422)
@@ -102,7 +123,7 @@ def _accept(db: Session, batch: Batch, user: User, key: str, name: str, data: by
     if prior is not None:
         return _replay(db, prior, digest)
 
-    sub = Submission(client_id=batch.client_id, batch_id=batch.id, idempotency_key=key, file_name=name,
+    sub = Submission(client_id=batch.client_id, entity_id=batch.entity_id, batch_id=batch.id, idempotency_key=key, file_name=name,
                      sha256=digest, size=size, actor=user.name, outcome="accepted")
     if not verdict.ok and not verdict.quarantine:
         sub.outcome, sub.reason = "rejected", verdict.reason
@@ -124,7 +145,7 @@ def _accept(db: Session, batch: Batch, user: User, key: str, name: str, data: by
         db.commit()
         return _receipt(sub, existing, True, 200)
 
-    doc = Document(client_id=batch.client_id, batch_id=batch.id, original_name=name,
+    doc = Document(client_id=batch.client_id, entity_id=batch.entity_id, batch_id=batch.id, original_name=name,
                    mime_type=safety.MIME.get(verdict.kind or "", "application/octet-stream"),
                    size=size, page_count=verdict.page_count, sha256=digest,
                    storage_key=_save_original(batch.client_id, digest, data),
@@ -137,6 +158,8 @@ def _accept(db: Session, batch: Batch, user: User, key: str, name: str, data: by
     sub.document_id = doc.id
     if verdict.quarantine:
         sub.outcome, sub.reason = "quarantined", verdict.reason
+    else:
+        jobs.enqueue(db, doc)
     db.add(sub)
     db.commit()
     if verdict.quarantine:
@@ -153,19 +176,118 @@ def health() -> dict:
 def create_client(body: ClientIn, db: Session = Depends(get_db), user: User = Depends(current_user)):
     client = Client(name=body.name, tax_id=body.tax_id)
     db.add(client)
+    db.flush()
+    db.add(TaxEntity(client_id=client.id, tax_id=body.tax_id, legal_name=body.name))
     db.commit()
     return ClientOut(id=client.id, name=client.name, tax_id=client.tax_id)
 
 
-@app.post("/batches", status_code=201, response_model=BatchOut, responses=_errors(401, 404))
-def create_batch(body: BatchIn, db: Session = Depends(get_db), user: User = Depends(current_user)):
+@app.post("/clients/{client_id}/entities", status_code=201, response_model=TaxEntityOut,
+          responses=_errors(401, 404, 409, overrides={409: "Mã số thuế đã tồn tại trong khách hàng."},))
+def create_tax_entity(client_id: str, body: TaxEntityIn, db: Session = Depends(get_db),
+                      user: User = Depends(current_user)):
+    require_scope(user, client_id)
+    if db.get(Client, client_id) is None:
+        raise ApiError("not_found")
+    entity = TaxEntity(client_id=client_id, tax_id=body.tax_id, legal_name=body.legal_name,
+                       address=body.address, representative_name=body.representative_name)
+    db.add(entity)
+
+    try:
+        db.commit()
+    except IntegrityError as exc:
+        db.rollback()
+
+        diagnostic = getattr(
+            getattr(exc.orig, "diag", None),
+            "constraint_name",
+            None,
+        )
+
+        sqlite_duplicate = (
+            getattr(exc.orig, "sqlite_errorname", None) == "SQLITE_CONSTRAINT_UNIQUE"
+            and str(exc.orig)
+            == "UNIQUE constraint failed: tax_entities.client_id, tax_entities.tax_id"
+        )
+
+        if diagnostic == "uq_tax_entities_client_tax_id" or sqlite_duplicate:
+            raise ApiError("duplicate_tax_id") from exc
+
+        raise
+
+
+    db.refresh(entity)
+
+    return TaxEntityOut(id=entity.id, client_id=entity.client_id, tax_id=entity.tax_id,
+                        legal_name=entity.legal_name, address=entity.address,
+                        representative_name=entity.representative_name, is_active=entity.is_active)
+
+
+
+
+@app.post(
+    "/batches",
+    status_code=201,
+    response_model=BatchOut,
+    responses=_errors(
+        400, 401, 404, 409,
+        overrides={
+            400: "Khách hàng có nhiều pháp nhân; cần chỉ định entity_id khi tạo batch.",
+            409: "Khách hàng chưa có pháp nhân đang hoạt động để tạo batch.",
+        },
+    ),
+)
+def create_batch(
+    body: BatchIn,
+    db: Session = Depends(get_db),
+    user: User = Depends(current_user),
+):
     require_scope(user, body.client_id)
+
     if db.get(Client, body.client_id) is None:
         raise ApiError("not_found")
-    batch = Batch(client_id=body.client_id, engagement_id=body.engagement_id, created_by=user.name)
+
+    if body.entity_id:
+        entity = db.get(TaxEntity, body.entity_id)
+
+        if entity is None or entity.client_id != body.client_id or not entity.is_active:
+            raise ApiError("not_found")
+
+    else:
+        entities = db.scalars(
+            select(TaxEntity)
+            .where(
+                TaxEntity.client_id == body.client_id,
+                TaxEntity.is_active.is_(True),
+            )
+            .order_by(TaxEntity.created_at)
+        ).all()
+
+        if not entities:
+            raise ApiError("no_tax_entity")
+
+        if len(entities) > 1:
+            raise ApiError("entity_selection_required")
+
+        entity = entities[0]
+
+    batch = Batch(
+        client_id=body.client_id,
+        entity_id=entity.id,
+        engagement_id=body.engagement_id,
+        created_by=user.name,
+    )
+
     db.add(batch)
     db.commit()
-    return BatchOut(id=batch.id, client_id=batch.client_id, engagement_id=batch.engagement_id)
+
+    return BatchOut(
+        id=batch.id,
+        client_id=batch.client_id,
+        engagement_id=batch.engagement_id,
+        entity_id=batch.entity_id,
+    )
+
 
 
 @app.post("/batches/{batch_id}/documents", status_code=201, response_model=DocumentReceipt,
@@ -225,3 +347,56 @@ def manifest(batch_id: str, db: Session = Depends(get_db), user: User = Depends(
         "submission_id": s.id, "file_name": s.file_name, "size": s.size, "sha256": s.sha256, "outcome": s.outcome,
         "reason": s.reason, "document_id": s.document_id, "status": status, "uploaded_by": s.actor,
         "received_at": _iso(s.received_at)} for s, status in rows])
+
+
+def _iso_or_none(value: datetime | None) -> str | None:
+    return _iso(value) if value is not None else None
+
+
+def _duration_ms(job: ProcessingJob) -> int | None:
+    """Thời lượng một lần thử, tính từ started_at đến finished_at (dùng cho lịch sử chạy, G4T-76)."""
+    if job.started_at is None or job.finished_at is None:
+        return None
+    started = job.started_at if job.started_at.tzinfo else job.started_at.replace(tzinfo=timezone.utc)
+    finished = job.finished_at if job.finished_at.tzinfo else job.finished_at.replace(tzinfo=timezone.utc)
+    return max(0, int((finished - started).total_seconds() * 1000))
+
+
+def _job_out(job: ProcessingJob) -> JobOut:
+    status = jobs.JobStatus(job.status)
+    error = None
+    if job.error_code:
+        error = JobErrorOut(code=job.error_code, message=job.error_message or "", retryable=bool(job.error_retryable))
+    return JobOut(
+        job_id=job.id, document_id=job.document_id, job_type=job.job_type, status=status,
+        display_status=jobs.DISPLAY_STATUS[status], will_retry=status == jobs.JobStatus.FAILED,
+        attempt_no=job.attempt_no, max_attempts=job.max_attempts, retry_of_job_id=job.retry_of_job_id,
+        correlation_id=job.correlation_id, processor_version=job.processor_version,
+        created_at=_iso(job.created_at), next_attempt_at=_iso(job.next_attempt_at),
+        started_at=_iso_or_none(job.started_at), finished_at=_iso_or_none(job.finished_at),
+        duration_ms=_duration_ms(job), error=error)
+
+
+@app.get("/jobs/{job_id}", response_model=JobOut, responses=_errors(401, 404))
+def get_job(job_id: str, db: Session = Depends(get_db), user: User = Depends(current_user)):
+    """Trạng thái một lần thử xử lý. Job của khách hàng khác trả 404 như không tồn tại."""
+    job = db.get(ProcessingJob, job_id)
+    if job is None:
+        raise ApiError("not_found")
+    require_scope(user, job.client_id)
+    return _job_out(job)
+
+
+@app.get("/documents/{document_id}/jobs", response_model=JobList, responses=_errors(401, 404))
+def list_document_jobs(document_id: str, job_type: str = "extract", db: Session = Depends(get_db),
+                       user: User = Depends(current_user)):
+    """Lịch sử các lần thử của một tài liệu, cũ trước mới sau; latest là lần thử mới nhất."""
+    doc = db.get(Document, document_id)
+    if doc is None:
+        raise ApiError("not_found")
+    require_scope(user, doc.client_id)
+    rows = db.scalars(select(ProcessingJob).where(
+        ProcessingJob.document_id == doc.id, ProcessingJob.job_type == job_type)
+        .order_by(ProcessingJob.attempt_no)).all()
+    items = [_job_out(job) for job in rows]
+    return JobList(document_id=doc.id, latest=items[-1] if items else None, items=items)

@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<TDiep>
+    <TTChung>
+        <PBan>2.0.0</PBan>
+        <MTDiep>TCT2026081599887701</MTDiep>
+        <MSNTNhan>TBT2026081501</MSNTNhan>
+    </TTChung>
+    <DLieu>
+        <HDon>
+            <DLHDon>
+                <TTChung>
+                    <PBan>2.0.0</PBan>
+                    <THDon>Hóa đơn giá trị gia tăng</THDon>
+                    <KHMSHDon>1</KHMSHDon>
+                    <KHHDon>1C26TBV</KHHDon>
+                    <SHDon>0000789</SHDon>
+                    <NLap>2026-08-15</NLap>
+                    <DVTTe>VND</DVTTe>
+                    <TGia>1</TGia>
+                </TTChung>
+                <NDHDon>
+                    <NBan>
+                        <Ten>CÔNG TY CP THIẾT BỊ Y TẾ GIẢ LẬP BÁCH VIỆT</Ten>
+                        <MST>0107778899</MST>
+                        <DChi>Số 202 Đường Giả Lập Epsilon, Phường Thử Nghiệm 5, Quận Kịch Bản, TP. Hà Nội</DChi>
+                    </NBan>
+                    <NMua>
+                        <Ten>BỆNH VIỆN ĐA KHOA MẪU THỬ BẠCH MAI</Ten>
+                        <MST>0106554433</MST>
+                        <DChi>Số 100 Phố Thử Nghiệm Đồng Tâm, Quận Giả Định, TP. Hà Nội</DChi>
+                    </NMua>
+                    <TToan>
+                        <TgTCThue>60000000</TgTCThue>
+                        <TgTThue>3000000</TgTThue>
+                        <TgTTTBSo>63000000</TgTTTBSo>
+                        <TgTTTBChu>Sáu mươi ba triệu đồng</TgTTTBChu>
+                        <THTTLTSuat>
+                            <LTSuat>
+                                <TSuat>5%</TSuat>
+                                <ThTien>60000000</ThTien>
+                                <TThue>3000000</TThue>
+                            </LTSuat>
+                        </THTTLTSuat>
+                    </TToan>
+                </NDHDon>
+            </DLHDon>
+            <MCCQT>TCT010777889920261C26TBV0000789</MCCQT>
+        </HDon>
+    </DLieu>
+</TDiep>

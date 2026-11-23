@@ -11,13 +11,13 @@ MIB_20 = 20 * 1024 * 1024
 
 
 def xml_of_size(size: int) -> bytes:
-    head, tail = b"<HDon>", b"</HDon>"
+    head, tail = b"<kiem-tra>", b"</kiem-tra>"
     return head + b" " * (size - len(head) - len(tail)) + tail
 
 
 def setup(api):
     head = {"X-User": "u1"}
-    cid = api.post("/clients", json={"name": "KH A", "tax_id": "0312345678"}, headers=head).json()["id"]
+    cid = api.post("/clients", json={"name": "KH", "tax_id": "KH-1"}, headers=head).json()["id"]
     head["X-Client-Ids"] = cid
     bid = api.post("/batches", json={"client_id": cid, "engagement_id": "E1"}, headers=head).json()["id"]
     return bid, head
