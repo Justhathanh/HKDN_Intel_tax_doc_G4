@@ -1,6 +1,7 @@
 """Kiểm thử tích hợp hàng đợi nền và enqueue khi tải tài liệu (G4T-69, G4T-70, G4T-71)."""
 import hashlib
 import os
+from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
@@ -9,6 +10,7 @@ from sqlalchemy.orm import sessionmaker
 
 from app import main, safety
 from app.db import Base
+from app.domain_models import ExtractionRun
 from app.errors import ApiError
 from app.jobs import JobStatus
 from app.models import Batch, Client, Document, ProcessingJob
@@ -100,16 +102,20 @@ def test_duplicate_upload_does_not_create_duplicate_job(tmp_path, monkeypatch):
         assert len(db.scalars(select(ProcessingJob)).all()) == 1
 
 
-def test_worker_processes_queued_job_and_verifies_original(tmp_path, monkeypatch):
-    SessionTesting, store, _, batch_id, user = _setup_env(tmp_path)
-    monkeypatch.setattr(main, "store", store)
-
-    digest = hashlib.sha256(SAMPLE_XML).hexdigest()
-    verdict = safety.inspect("to_khai.xml", SAMPLE_XML)
-
+def _accept_file(SessionTesting, batch_id, user, name, data, key):
+    digest = hashlib.sha256(data).hexdigest()
+    verdict = safety.inspect(name, data)
     with SessionTesting() as db:
         batch = db.get(Batch, batch_id)
-        main._accept(db, batch, user, "idem-1", "to_khai.xml", SAMPLE_XML, digest, len(SAMPLE_XML), verdict)
+        main._accept(db, batch, user, key, name, data, digest, len(data), verdict)
+
+
+def test_worker_processes_queued_job_and_verifies_original(tmp_path, monkeypatch):
+    """Hóa đơn XML trong dataset chính thức (G4T-42): worker parse thật rồi mới báo SUCCEEDED."""
+    SessionTesting, store, _, batch_id, user = _setup_env(tmp_path)
+    monkeypatch.setattr(main, "store", store)
+    invoice = (Path(__file__).parent / "fixtures" / "xml" / "tct_hdon_01_vat10_standard.xml").read_bytes()
+    _accept_file(SessionTesting, batch_id, user, "hoa_don.xml", invoice, "idem-1")
 
     processed_id = process_one(SessionTesting, store, worker_id="test-worker")
     assert processed_id is not None
@@ -118,9 +124,29 @@ def test_worker_processes_queued_job_and_verifies_original(tmp_path, monkeypatch
         job = db.get(ProcessingJob, processed_id)
         doc = db.get(Document, job.document_id)
         assert job.status == JobStatus.SUCCEEDED
-        assert job.processor_version is not None
-        # Hành vi tạm ở G4T-69; sẽ cập nhật khi G4T-70 gắn logic chuyển trạng thái tài liệu
+        assert job.processor_version.startswith("xml-parser ")
+        runs = db.scalars(select(ExtractionRun).where(ExtractionRun.job_id == job.id)).all()
+        assert len(runs) == 1 and runs[0].status == "succeeded"
+        # Trạng thái tài liệu (received -> processing -> needs_review) chưa đổi: phần chuyển trạng thái
+        # tài liệu của worker (G4T-67 mục 6) chưa làm.
         assert doc.status == State.RECEIVED
+
+
+def test_worker_rejects_non_invoice_xml_instead_of_false_success(tmp_path, monkeypatch):
+    """Tờ khai thuế XML không phải hóa đơn: trước đây job vẫn SUCCEEDED (báo thành công giả); nay vào
+    dead_letter với mã xml_unsupported_variant và có extraction_run trạng thái failed để truy vết."""
+    SessionTesting, store, _, batch_id, user = _setup_env(tmp_path)
+    monkeypatch.setattr(main, "store", store)
+    _accept_file(SessionTesting, batch_id, user, "to_khai.xml", SAMPLE_XML, "idem-1")
+
+    processed_id = process_one(SessionTesting, store, worker_id="test-worker")
+
+    with SessionTesting() as db:
+        job = db.get(ProcessingJob, processed_id)
+        assert (job.status, job.error_code, job.error_retryable) == (
+            JobStatus.DEAD_LETTER, "xml_unsupported_variant", False)
+        run = db.scalar(select(ExtractionRun).where(ExtractionRun.job_id == job.id))
+        assert (run.status, run.error_code) == ("failed", "xml_unsupported_variant")
 
 
 def test_worker_moves_tampered_original_to_dead_letter(tmp_path, monkeypatch):
