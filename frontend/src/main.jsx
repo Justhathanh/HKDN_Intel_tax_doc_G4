@@ -20,8 +20,92 @@ const LABEL = {
   superseded: "Đã thay thế",
 };
 
+ 
+const ERROR_LABEL = {
+  file_too_large: "Tệp vượt quá dung lượng tối đa 20 MB.",
+  too_many_pages: "Tệp PDF vượt quá giới hạn 30 trang.",
+  unsupported_format: "Định dạng tệp không được hỗ trợ.",
+  extension_content_mismatch: "Đuôi tệp không khớp với nội dung thực tế.",
+  corrupt_file: "Tệp bị hỏng hoặc không thể đọc.",
+  password_protected: "Tệp PDF có mật khẩu. Vui lòng bỏ mật khẩu rồi thử lại.",
+  unsafe_xml: "Tệp XML không an toàn.",
+  empty_file: "Tệp rỗng. Vui lòng chọn tệp khác.",
+  archive_not_supported: "Không hỗ trợ tệp nén.",
+  quarantined: "Tệp đã bị cách ly để kiểm tra.",
+  idempotency_key_conflict: "Yêu cầu tải lên bị trùng khóa. Vui lòng thử lại.",
+  not_found: "Không tìm thấy dữ liệu yêu cầu.",
+  unauthenticated: "Bạn chưa được xác thực.",
+  same_hash_in_client: "Tệp này đã tồn tại trong khách hàng hiện tại.",
+};
+
+
+const OUTCOME_LABEL = {
+  accepted: "Đã tiếp nhận",
+  duplicate: "Đã tồn tại",
+  rejected: "Bị từ chối",
+  quarantined: "Đã cách ly",
+};
+
 const ACCEPT = ".pdf,.jpg,.jpeg,.png,.xml";
 const FORMATS = ["pdf", "jpg", "jpeg", "png", "xml"];
+const MAX_SIZE = 20 * 1024 * 1024;
+
+function translateError(value) {
+  if (!value) return "Đã xảy ra lỗi không xác định.";
+
+  if (typeof value === "string") {
+    return ERROR_LABEL[value] ?? value;
+  }
+
+  if (Array.isArray(value)) {
+    return value.map(translateError).join("; ");
+  }
+
+  if (typeof value === "object") {
+    if (value.code) return translateError(value.code);
+    if (value.reason) return translateError(value.reason);
+    if (value.message) return translateError(value.message);
+    if (value.msg) return translateError(value.msg);
+  }
+
+  return "Đã xảy ra lỗi không xác định.";
+}
+
+
+function getErrorMessage(body, status) {
+  if (body?.error_code) {
+    return ERROR_LABEL[body.error_code] ??
+      body?.message ??
+      body.error_code;
+  }
+
+  const detail = body?.detail;
+  const value =
+    body?.reason ??
+    detail ??
+    body?.message;
+
+  if (value) return translateError(value);
+
+
+  if (status === 413) {
+    return "Tệp vượt quá dung lượng cho phép.";
+  }
+
+  if (status === 422) {
+    return "Tệp không hợp lệ hoặc không đáp ứng yêu cầu.";
+  }
+
+  if (status >= 500) {
+    return "Máy chủ đang gặp lỗi. Vui lòng thử lại sau.";
+  }
+
+  return `Yêu cầu thất bại (HTTP ${status}).`;
+}
+
+function fileKey(file) {
+  return `${file.name}-${file.size}-${file.lastModified}`;
+}
 
 function App() {
   const [form, setForm] = useState({
@@ -29,6 +113,7 @@ function App() {
     tax_id: "",
     engagement: "",
   });
+
   const [session, setSession] = useState(null);
   const [items, setItems] = useState([]);
   const [files, setFiles] = useState([]);
@@ -43,17 +128,28 @@ function App() {
   });
 
   async function call(path, init) {
-    const res = await fetch(API + path, init);
+    let res;
+
+    try {
+      res = await fetch(API + path, init);
+    } catch {
+      throw new Error(
+        "Không thể kết nối máy chủ. Vui lòng kiểm tra backend."
+      );
+    }
+
     const body = await res.json().catch(() => null);
 
     if (!res.ok) {
-      throw new Error(body?.message ?? `Lỗi ${res.status}`);
+      throw new Error(getErrorMessage(body, res.status));
     }
+
     return body;
   }
 
   async function start(e) {
     e.preventDefault();
+
     setError("");
     setMessage("");
     setLoading(true);
@@ -88,7 +184,9 @@ function App() {
         batchId: batch.id,
         name: client.name,
       });
+
       setItems([]);
+      setFiles([]);
       setMessage("Tạo lô hồ sơ thành công!");
     } catch (err) {
       setError(err.message);
@@ -100,8 +198,11 @@ function App() {
   async function refresh(s) {
     const manifest = await call(
       `/batches/${s.batchId}/manifest`,
-      { headers: headers(s.clientId) }
+      {
+        headers: headers(s.clientId),
+      }
     );
+
     setItems(manifest.items ?? []);
   }
 
@@ -187,6 +288,7 @@ function App() {
     <main>
       <header className="page-header">
         <div className="logo">TH</div>
+
         <div>
           <h1>Tiếp nhận hồ sơ thuế</h1>
           <p className="note">
@@ -196,7 +298,10 @@ function App() {
       </header>
 
       {error && (
-        <div className="alert error" role="alert">{error}</div>
+        <div className="alert error" role="alert">
+          <strong>Thông báo lỗi: </strong>
+          {error}
+        </div>
       )}
 
       {message && (
@@ -208,6 +313,7 @@ function App() {
       {!session ? (
         <section className="card">
           <h2>Tạo lô hồ sơ mới</h2>
+
           <p className="note">
             Nhập thông tin khách hàng để bắt đầu tải tài liệu.
           </p>
@@ -219,7 +325,10 @@ function App() {
                 required
                 value={form.name}
                 onChange={(e) =>
-                  setForm({ ...form, name: e.target.value })
+                  setForm({
+                    ...form,
+                    name: e.target.value,
+                  })
                 }
                 placeholder="Nhập tên khách hàng"
               />
@@ -231,7 +340,10 @@ function App() {
                 required
                 value={form.tax_id}
                 onChange={(e) =>
-                  setForm({ ...form, tax_id: e.target.value })
+                  setForm({
+                    ...form,
+                    tax_id: e.target.value,
+                  })
                 }
                 placeholder="Nhập mã số thuế"
               />
@@ -243,14 +355,19 @@ function App() {
                 required
                 value={form.engagement}
                 onChange={(e) =>
-                  setForm({ ...form, engagement: e.target.value })
+                  setForm({
+                    ...form,
+                    engagement: e.target.value,
+                  })
                 }
                 placeholder="Nhập mã hợp đồng"
               />
             </label>
 
             <button disabled={loading}>
-              {loading ? "Đang tạo..." : "Tạo lô hồ sơ"}
+              {loading
+                ? "Đang tạo..."
+                : "Tạo lô hồ sơ"}
             </button>
           </form>
         </section>
@@ -258,9 +375,12 @@ function App() {
         <>
           <section className="card">
             <h2>Thông tin lô hồ sơ</h2>
+
             <p>
-              <strong>Khách hàng:</strong> {session.name}
+              <strong>Khách hàng:</strong>{" "}
+              {session.name}
             </p>
+
             <p className="note">
               Mã lô: {session.batchId}
             </p>
@@ -268,33 +388,63 @@ function App() {
 
           <section className="card">
             <h2>Tải lên tài liệu</h2>
+
             <p className="note">
               Hỗ trợ PDF, JPG, PNG và XML.
+              Dung lượng tối đa 20 MB.
+              PDF tối đa 30 trang.
             </p>
 
             <label className="upload-zone">
               <span className="upload-icon">↑</span>
+
               <strong>Nhấn để chọn tài liệu</strong>
-              <span>Có thể chọn nhiều file cùng lúc</span>
+
+              <span>
+                Có thể chọn nhiều file cùng lúc
+              </span>
+
               <input
                 type="file"
                 accept={ACCEPT}
                 multiple
                 disabled={uploading}
                 onChange={selectFiles}
-                onClick={(e) => { e.target.value = ""; }}
               />
             </label>
 
             {files.length > 0 && (
               <div className="selected-files">
-                <h3>File đã chọn ({files.length})</h3>
-                {files.map((file, index) => (
-                  <div className="file-row" key={index}>
-                    <span>{file.name}</span>
+                <h3>
+                  File đã chọn ({files.length})
+                </h3>
+
+                {files.map((entry) => (
+                  <div
+                    className="file-row"
+                    key={entry.id}
+                  >
+                    <span>{entry.file.name}</span>
+
                     <span>
-                      {(file.size / 1024 / 1024).toFixed(2)} MB
+                      {(
+                        entry.file.size /
+                        1024 /
+                        1024
+                      ).toFixed(2)}{" "}
+                      MB
                     </span>
+
+                    <button
+                      type="button"
+                      className="secondary"
+                      disabled={uploading}
+                      onClick={() =>
+                        removeFile(entry.id)
+                      }
+                    >
+                      Xóa
+                    </button>
                   </div>
                 ))}
               </div>
@@ -303,7 +453,9 @@ function App() {
             <button
               className="upload-button"
               onClick={upload}
-              disabled={!files.length || uploading}
+              disabled={
+                !files.length || uploading
+              }
             >
               {uploading
                 ? "Đang tải tài liệu..."
@@ -314,11 +466,13 @@ function App() {
           <section className="card">
             <div className="section-heading">
               <h2>Danh sách tài liệu</h2>
+
               <button
                 className="secondary"
                 disabled={uploading}
                 onClick={async () => {
                   try {
+                    setError("");
                     await refresh(session);
                   } catch (err) {
                     setError(err.message);
@@ -340,21 +494,48 @@ function App() {
                     <th>Document ID</th>
                   </tr>
                 </thead>
+
                 <tbody>
                   {items.length === 0 ? (
                     <tr>
-                      <td colSpan="5" className="empty">
+                      <td
+                        colSpan="5"
+                        className="empty"
+                      >
                         Chưa có tài liệu để hiển thị
                       </td>
                     </tr>
                   ) : (
                     items.map((r, index) => (
-                      <tr key={r.submission_id ?? index}>
+                      <tr
+                        key={
+                          r.submission_id ??
+                          r.document_id ??
+                          index
+                        }
+                      >
                         <td>{r.file_name}</td>
-                        <td>{r.outcome}</td>
-                        <td>{LABEL[r.status] ?? r.status ?? "Không xử lý"}</td>
-                        <td>{r.reason ?? ""}</td>
-                        <td className="hash">{r.document_id ?? ""}</td>
+
+                        <td>
+                          {OUTCOME_LABEL[r.outcome] ??
+                            translateError(r.outcome ?? "")}
+                        </td>
+
+                        <td>
+                          {LABEL[r.status] ??
+                            r.status ??
+                            "Không xử lý"}
+                        </td>
+
+                        <td>
+                          {r.reason
+                            ? translateError(r.reason)
+                            : ""}
+                        </td>
+
+                        <td className="hash">
+                          {r.document_id ?? ""}
+                        </td>
                       </tr>
                     ))
                   )}
@@ -372,4 +553,6 @@ function App() {
   );
 }
 
-createRoot(document.getElementById("root")).render(<App />);
+createRoot(
+  document.getElementById("root")
+).render(<App />);
