@@ -63,6 +63,9 @@ SAFE_ERRORS: dict[str, tuple[bool, str]] = {
     "xml_malformed": (False, "XML sai cú pháp, không đọc được."),
     "xml_unsupported_variant": (False, "XML không thuộc chuẩn hóa đơn nào đang hỗ trợ."),
     "xml_schema_invalid": (False, "XML thiếu phần bắt buộc của chuẩn hóa đơn."),
+    # G4T-62: lỗi đọc PDF (app/pdf_text.py); file không đổi nên không thử lại
+    "pdf_encrypted": (False, "PDF có mật khẩu, không đọc được lớp chữ."),
+    "pdf_unreadable": (False, "PDF hỏng hoặc sai cấu trúc, không đọc được."),
     "ocr_timeout": (True, "Dịch vụ OCR phản hồi quá thời gian."),
     "ocr_unavailable": (True, "Dịch vụ OCR tạm thời không dùng được."),
     "quota_exceeded": (True, "Đã chạm hạn mức của dịch vụ xử lý."),

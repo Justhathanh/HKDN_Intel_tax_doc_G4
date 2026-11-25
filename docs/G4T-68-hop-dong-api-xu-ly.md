@@ -203,6 +203,8 @@ Frontend dựa vào `error_code` để xử lý; `message` là câu tiếng Vi�
 | `xml_malformed` | false | XML sai cú pháp (G4T-61) |
 | `xml_unsupported_variant` | false | XML không thuộc chuẩn đang hỗ trợ (G4T-61) |
 | `xml_schema_invalid` | false | XML thiếu phần bắt buộc hoặc có nhiều hóa đơn (G4T-61) |
+| `pdf_encrypted` | false | PDF có mật khẩu, không đọc được lớp chữ (G4T-62) |
+| `pdf_unreadable` | false | PDF hỏng hoặc sai cấu trúc (G4T-62) |
 | `ocr_timeout` | true | OCR quá thời gian |
 | `ocr_unavailable` | true | OCR tạm không dùng được |
 | `quota_exceeded` | true | Chạm hạn mức dịch vụ |
