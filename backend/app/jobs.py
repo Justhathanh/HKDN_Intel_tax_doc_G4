@@ -58,6 +58,11 @@ SAFE_ERRORS: dict[str, tuple[bool, str]] = {
     "original_tampered": (False, "Mã băm bản gốc không khớp; dừng xử lý."),
     "unsupported_document": (False, "Loại tài liệu chưa được hỗ trợ."),
     "parser_error": (False, "Không đọc được cấu trúc tài liệu."),
+    # G4T-61: lỗi parse XML (app/xml_parser.py), đều không thử lại vì file không đổi
+    "xml_unsafe": (False, "XML có DTD, entity hoặc tham chiếu ngoài; không xử lý."),
+    "xml_malformed": (False, "XML sai cú pháp, không đọc được."),
+    "xml_unsupported_variant": (False, "XML không thuộc chuẩn hóa đơn nào đang hỗ trợ."),
+    "xml_schema_invalid": (False, "XML thiếu phần bắt buộc của chuẩn hóa đơn."),
     "ocr_timeout": (True, "Dịch vụ OCR phản hồi quá thời gian."),
     "ocr_unavailable": (True, "Dịch vụ OCR tạm thời không dùng được."),
     "quota_exceeded": (True, "Đã chạm hạn mức của dịch vụ xử lý."),
