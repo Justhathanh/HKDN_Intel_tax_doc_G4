@@ -171,8 +171,8 @@ def enqueue(db: Session, document: Document, job_type: str = "extract", correlat
         ProcessingJob.document_id == document.id, ProcessingJob.job_type == job_type)
         .order_by(ProcessingJob.attempt_no.desc()).limit(1)) or 0
     next_attempt = last + 1
-    job = ProcessingJob(client_id=document.client_id, document_id=document.id, job_type=job_type,
-                        status=JobStatus.QUEUED, attempt_no=next_attempt,
+    job = ProcessingJob(client_id=document.client_id, entity_id=document.entity_id, document_id=document.id,
+                        job_type=job_type, status=JobStatus.QUEUED, attempt_no=next_attempt,
                         max_attempts=max(max_attempts, next_attempt),
                         correlation_id=correlation_id or str(uuid.uuid4()), input_sha256=document.sha256)
     db.add(job)
@@ -231,7 +231,8 @@ def fail(db: Session, job: ProcessingJob, code: str, processor_version: str | No
     db.flush()
     if not will_retry:
         return None
-    retry = ProcessingJob(client_id=job.client_id, document_id=job.document_id, job_type=job.job_type,
+    retry = ProcessingJob(client_id=job.client_id, entity_id=job.entity_id, document_id=job.document_id,
+                          job_type=job.job_type,
                           status=JobStatus.QUEUED, attempt_no=job.attempt_no + 1, max_attempts=job.max_attempts,
                           retry_of_job_id=job.id, correlation_id=job.correlation_id, input_sha256=job.input_sha256,
                           next_attempt_at=now + backoff(job.attempt_no))
@@ -280,6 +281,7 @@ def retry_dead_letter(db: Session, job: ProcessingJob, correlation_id: str | Non
     next_attempt = last + 1
     retry = ProcessingJob(
         client_id=job.client_id,
+        entity_id=job.entity_id,
         document_id=job.document_id,
         job_type=job.job_type,
         status=JobStatus.QUEUED,
