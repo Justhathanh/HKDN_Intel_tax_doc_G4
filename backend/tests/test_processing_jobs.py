@@ -267,3 +267,31 @@ def test_concurrent_enqueue_and_claim(api):
     with ThreadPoolExecutor(6) as pool:
         claimed = [c for c in pool.map(claim, [f"w{i}" for i in range(6)]) if c]
     assert len(claimed) == 3 and len(set(claimed)) == 3
+
+
+def test_job_and_retry_carry_document_entity(api):
+    """Sau PR #18 tài liệu có entity_id; job và các lần thử lại phải mang cùng entity_id để khóa ngoại
+    (document_id, client_id, entity_id) thật sự được kiểm tra (khóa ngoại bỏ qua dòng có giá trị rỗng)."""
+    doc_id = upload(api)
+    with SessionLocal() as db:
+        doc = db.get(Document, doc_id)
+        assert doc.entity_id is not None
+        job = jobs.enqueue(db, doc)  # hàm upload() của file này xóa job tự tạo, nên tạo lại ở đây
+        assert job.entity_id == doc.entity_id
+        claimed = jobs.claim_next(db, "w", now=T0 + timedelta(hours=1))
+        retry = jobs.fail(db, claimed, "ocr_unavailable", now=T0 + timedelta(hours=1))
+        db.commit()
+        assert retry.entity_id == doc.entity_id
+
+
+def test_manual_retry_from_dead_letter_keeps_entity(api):
+    """Lần thử lại thủ công từ dead_letter (PR #21, G4T-74/75) cũng mang entity_id của tài liệu."""
+    doc_id = upload(api)
+    with SessionLocal() as db:
+        doc = db.get(Document, doc_id)
+        job = jobs.enqueue(db, doc)
+        claimed = jobs.claim_next(db, "w", now=T0 + timedelta(hours=1))
+        jobs.fail(db, claimed, "parser_error", now=T0 + timedelta(hours=1))
+        retry, created = jobs.retry_dead_letter(db, claimed)
+        db.commit()
+        assert created and retry.entity_id == doc.entity_id == job.entity_id
