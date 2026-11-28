@@ -125,10 +125,11 @@ def test_worker_saves_field_and_document_results(api):
     assert api.get(f"/jobs/{job_id}", headers=head).json()["display_status"] == "SUCCEEDED"
 
 
-def test_worker_does_not_report_success_for_unsupported_pdf(api):
-    """PDF chưa có bộ xử lý (G4T-62): job lỗi unsupported_document thay vì SUCCEEDED giả."""
-    pdf = (FIXTURES / GROUND_TRUTH["invoice_digital_text_layer.pdf"]["relative_path"]).read_bytes()
-    _upload(api, "hoa_don.pdf", pdf, "KH-PDF")
+def test_worker_does_not_report_success_for_unsupported_image(api):
+    """Ảnh chưa có bộ xử lý (chờ OCR G4T-23): job lỗi unsupported_document thay vì SUCCEEDED giả.
+    PDF nay đã có bộ đọc lớp chữ (G4T-62, tests/test_pdf_text_layer.py)."""
+    image = (FIXTURES / GROUND_TRUTH["invoice_vat10_retail.jpg"]["relative_path"]).read_bytes()
+    _upload(api, "hoa_don.jpg", image, "KH-IMG")
     job_id = process_one(SessionLocal, main.store, worker_id="w-golden")
     with SessionLocal() as db:
         job = db.get(ProcessingJob, job_id)

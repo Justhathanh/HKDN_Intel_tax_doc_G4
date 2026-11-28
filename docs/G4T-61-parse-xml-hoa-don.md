@@ -9,10 +9,10 @@ EXT 06 (chuẩn hóa, thiếu là chưa biết), DAT 03 (cấu trúc trường),
 Code: `backend/app/xml_parser.py`, `backend/app/extraction.py` (bộ xử lý của worker), `backend/scripts/evaluate_xml_dataset.py`
 Test: `backend/tests/test_xml_parser.py` (an toàn, mã lỗi), `backend/tests/test_xml_golden.py` (dataset chính thức, worker)
 
-> **Trạng thái (22/11):** đã code và đã test trên dataset chính thức G4T-42 (PR #15, đã merge); PR #13 chờ review.
-> Chưa merge vào `main`. Trên `main` hiện vẫn là parser cũ `tt-generic-v0` (chưa đối chiếu file thật, không có worker
-> gọi tới); khi PR #13 merge, `tct-hdon-v1` thay thế hoàn toàn bản cũ.
-> Cách ghi trạng thái theo góp ý của trưởng nhóm: **coded → tested → reviewed → merged → accepted**. G4T-61 đang ở **tested**.
+> **Trạng thái (26/11):** PR #13 đã review và merge vào `main` (merge commit `89d3ca0`); Jira G4T-61, G4T-46 Done.
+> `tct-hdon-v1` đã thay thế hoàn toàn parser cũ `tt-generic-v0`.
+> Cách ghi trạng thái theo góp ý của trưởng nhóm: **coded → tested → reviewed → merged → accepted**. G4T-61 đang ở **merged**
+> (chờ PO nghiệm thu).
 
 ## 1. Đối chiếu tiêu chí nghiệm thu
 
@@ -173,7 +173,8 @@ Trước đây bộ xử lý mặc định chỉ đọc bản gốc rồi báo S
 |---|---|---|
 | XML hóa đơn `tct-hdon-v1` | `succeeded`, `processor_version = "xml-parser 0.3.0"` | 1 `extraction_runs` (status succeeded, `job_id`), mỗi trường 1 `extracted_fields` (`field_status`, `extraction_method = xml`, `source_anchor.xml_path`), các quy tắc mức tài liệu trong `document_validations` |
 | XML không parse được | `dead_letter`, mã `xml_*`, không thử lại | 1 `extraction_runs` status failed kèm `error_code` để truy vết |
-| PDF, ảnh (chưa có bộ xử lý) | `dead_letter`, mã `unsupported_document` | không có kết quả; **không báo thành công giả**. Khi có G4T-62 và OCR sẽ có bộ xử lý riêng |
+| PDF | đọc lớp chữ theo trang (G4T-62, PR #25), xem `docs/G4T-62-doc-lop-chu-pdf.md` | `extracted_fields` `page_text` theo `page_number`; trang không có chữ đánh dấu `needs_ocr` |
+| Ảnh (chưa có bộ xử lý, chờ OCR G4T-23) | `dead_letter`, mã `unsupported_document` | không có kết quả; **không báo thành công giả** |
 
 Kết quả và trạng thái job được ghi trong **cùng một transaction** với worker (`object_session(job)`): không thể có
 job SUCCEEDED mà thiếu kết quả. MST dùng để xác định hướng hóa đơn lấy từ pháp nhân (`tax_entities`) của tài liệu,

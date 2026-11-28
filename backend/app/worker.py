@@ -28,8 +28,8 @@ def default_processor(job: ProcessingJob, data: bytes) -> str:
     """Bộ xử lý mặc định: trích xuất thật (app/extraction.py, G4T-61).
 
     Trước đây hàm này chỉ trả PROCESSOR_VERSION nên job luôn SUCCEEDED dù không trích xuất gì
-    (nhận xét P0 "worker báo thành công giả"). Nay XML hóa đơn được parse và lưu kết quả; loại chưa
-    hỗ trợ (PDF/ảnh, chờ G4T-62 và OCR) trả lỗi `unsupported_document` thay vì báo thành công.
+    (nhận xét P0 "worker báo thành công giả"). Nay XML hóa đơn được parse (G4T-61), PDF được đọc lớp chữ theo
+    trang (G4T-62); ảnh (chờ OCR) trả lỗi `unsupported_document` thay vì báo thành công.
     """
     return extract_processor(job, data)
 
